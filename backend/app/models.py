@@ -9,6 +9,8 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Enum,
+    Float,
+    Boolean,
 )
 from sqlalchemy.orm import relationship
 
@@ -84,6 +86,7 @@ class Case(Base):
     documents = relationship("Document", back_populates="case", cascade="all, delete-orphan")
     authorities = relationship("Authority", back_populates="case", cascade="all, delete-orphan")
     deadlines = relationship("Deadline", back_populates="case", cascade="all, delete-orphan")
+    time_entries = relationship("TimeEntry", back_populates="case", cascade="all, delete-orphan")
 
 
 class Template(Base):
@@ -164,3 +167,20 @@ class Deadline(Base):
 
     case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
     case = relationship("Case", back_populates="deadlines")
+
+
+class TimeEntry(Base):
+    """A billable-or-not time entry logged against a case."""
+
+    __tablename__ = "time_entries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    description = Column(String, nullable=False)
+    entry_date = Column(DateTime, nullable=False)
+    hours = Column(Float, nullable=False)
+    hourly_rate = Column(Float, nullable=True)
+    billable = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
+    case = relationship("Case", back_populates="time_entries")

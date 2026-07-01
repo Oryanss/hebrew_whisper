@@ -3,12 +3,14 @@ import { useParams } from "react-router-dom";
 import { api, ApiError } from "../api";
 import type {
   Authority,
+  BillingSummary,
   Case,
   CitationAuditResult,
   Client,
   Deadline,
   LegalDocument,
   Template,
+  TimeEntry,
 } from "../types";
 
 const DEADLINE_STATUS_LABEL: Record<string, string> = {
@@ -27,6 +29,8 @@ export default function CaseDetailPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [authorities, setAuthorities] = useState<Authority[]>([]);
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
   const [selectedDoc, setSelectedDoc] = useState<LegalDocument | null>(null);
   const [audit, setAudit] = useState<CitationAuditResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -38,20 +42,32 @@ export default function CaseDetailPage() {
       .getCase(id)
       .then(async (c) => {
         setCaseData(c);
-        const [clients, docs, tpls, auths, dls] = await Promise.all([
+        const [clients, docs, tpls, auths, dls, entries, summary] = await Promise.all([
           api.listClients(),
           api.listCaseDocuments(id),
           api.listTemplates(),
           api.listAuthorities(id),
           api.listCaseDeadlines(id),
+          api.listTimeEntries(id),
+          api.getBillingSummary(id),
         ]);
         setClient(clients.find((cl) => cl.id === c.client_id) ?? null);
         setDocuments(docs);
         setTemplates(tpls);
         setAuthorities(auths);
         setDeadlines(dls);
+        setTimeEntries(entries);
+        setBillingSummary(summary);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "שגיאה בטעינת התיק"));
+  }
+
+  async function reloadBillingSummary() {
+    try {
+      setBillingSummary(await api.getBillingSummary(id));
+    } catch {
+      /* summary refresh failure is non-critical; entries list already updated */
+    }
   }
 
   useEffect(reload, [id]);
@@ -110,7 +126,8 @@ export default function CaseDetailPage() {
 
   async function handleAddAuthority(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
     setError(null);
     try {
       const authority = await api.createAuthority({
@@ -122,7 +139,7 @@ export default function CaseDetailPage() {
         case_id: id,
       });
       setAuthorities((prev) => [authority, ...prev]);
-      e.currentTarget.reset();
+      formEl.reset();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "שגיאה בהוספת אסמכתא");
     }
@@ -130,7 +147,8 @@ export default function CaseDetailPage() {
 
   async function handleAddDeadline(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
     setError(null);
     try {
       const deadline = await api.createDeadline(id, {
@@ -141,7 +159,7 @@ export default function CaseDetailPage() {
       setDeadlines((prev) =>
         [...prev, deadline].sort((a, b) => a.due_date.localeCompare(b.due_date))
       );
-      e.currentTarget.reset();
+      formEl.reset();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "שגיאה בהוספת מועד");
     }
@@ -154,6 +172,39 @@ export default function CaseDetailPage() {
       setDeadlines((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "שגיאה בעדכון מועד");
+    }
+  }
+
+  async function handleAddTimeEntry(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
+    setError(null);
+    try {
+      const rate = form.get("hourly_rate");
+      const entry = await api.createTimeEntry(id, {
+        description: form.get("description"),
+        entry_date: new Date(form.get("entry_date") as string).toISOString(),
+        hours: Number(form.get("hours")),
+        hourly_rate: rate ? Number(rate) : null,
+        billable: form.get("billable") === "on",
+      });
+      setTimeEntries((prev) => [entry, ...prev]);
+      formEl.reset();
+      await reloadBillingSummary();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "שגיאה בהוספת רישום שעות");
+    }
+  }
+
+  async function handleDeleteTimeEntry(entryId: number) {
+    setError(null);
+    try {
+      await api.deleteTimeEntry(entryId);
+      setTimeEntries((prev) => prev.filter((e) => e.id !== entryId));
+      await reloadBillingSummary();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "שגיאה במחיקת רישום שעות");
     }
   }
 
@@ -246,6 +297,83 @@ export default function CaseDetailPage() {
                         </button>
                       </>
                     )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section className="card">
+        <h2>חיוב שעות</h2>
+        {billingSummary && (
+          <p className="muted small">
+            סה"כ {billingSummary.total_hours} שעות, מתוכן {billingSummary.billable_hours} שעות
+            לחיוב. סכום לחיוב: {billingSummary.total_billable_amount.toLocaleString()} ₪
+            {billingSummary.entries_missing_rate > 0 && (
+              <>
+                {" "}
+                (<strong>{billingSummary.entries_missing_rate}</strong> רישומים לחיוב חסרי
+                תעריף שעתי - אינם נכללים בסכום)
+              </>
+            )}
+          </p>
+        )}
+        <form onSubmit={handleAddTimeEntry} className="form-card">
+          <div className="form-grid">
+            <label>
+              תיאור הפעולה
+              <input name="description" required placeholder="ניסוח כתב תביעה..." />
+            </label>
+            <label>
+              תאריך
+              <input name="entry_date" type="date" required />
+            </label>
+            <label>
+              שעות
+              <input name="hours" type="number" step="0.25" min="0" required />
+            </label>
+            <label>
+              תעריף שעתי (₪, אופציונלי)
+              <input name="hourly_rate" type="number" step="1" min="0" />
+            </label>
+          </div>
+          <label style={{ flexDirection: "row", alignItems: "center", gap: "0.4rem" }}>
+            <input name="billable" type="checkbox" defaultChecked style={{ width: "auto" }} />
+            ניתן לחיוב
+          </label>
+          <button type="submit">הוספת רישום שעות</button>
+        </form>
+        {timeEntries.length === 0 ? (
+          <p className="muted small">אין רישומי שעות בתיק זה.</p>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>תיאור</th>
+                <th>תאריך</th>
+                <th>שעות</th>
+                <th>תעריף</th>
+                <th>לחיוב</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {timeEntries.map((entry) => (
+                <tr key={entry.id}>
+                  <td>{entry.description}</td>
+                  <td>{new Date(entry.entry_date).toLocaleDateString("he-IL")}</td>
+                  <td>{entry.hours}</td>
+                  <td>{entry.hourly_rate != null ? `${entry.hourly_rate} ₪/ש'` : "-"}</td>
+                  <td>{entry.billable ? "כן" : "לא"}</td>
+                  <td>
+                    <button
+                      className="link-button"
+                      onClick={() => handleDeleteTimeEntry(entry.id)}
+                    >
+                      מחיקה
+                    </button>
                   </td>
                 </tr>
               ))}

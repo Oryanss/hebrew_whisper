@@ -64,6 +64,8 @@ import type {
   User,
   Deadline,
   DeadlineWithCase,
+  TimeEntry,
+  BillingSummary,
 } from "./types";
 
 export const api = {
@@ -108,6 +110,17 @@ export const api = {
     request<Deadline>(`/api/deadlines/${id}`, { method: "PATCH", body: data }),
   listUpcomingDeadlines: (days = 14) =>
     request<DeadlineWithCase[]>(`/api/deadlines/upcoming?days=${days}`),
+
+  listTimeEntries: (caseId: number) =>
+    request<TimeEntry[]>(`/api/cases/${caseId}/time-entries`),
+  createTimeEntry: (caseId: number, data: object) =>
+    request<TimeEntry>(`/api/cases/${caseId}/time-entries`, { method: "POST", body: data }),
+  updateTimeEntry: (id: number, data: object) =>
+    request<TimeEntry>(`/api/time-entries/${id}`, { method: "PATCH", body: data }),
+  deleteTimeEntry: (id: number) =>
+    request<void>(`/api/time-entries/${id}`, { method: "DELETE" }),
+  getBillingSummary: (caseId: number) =>
+    request<BillingSummary>(`/api/cases/${caseId}/billing-summary`),
 };
 
 export { request };

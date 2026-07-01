@@ -156,6 +156,42 @@ class DeadlineWithCaseOut(DeadlineOut):
     case_number: str
 
 
+# --- Time & billing ---
+class TimeEntryCreate(BaseModel):
+    description: str
+    entry_date: datetime
+    hours: float
+    hourly_rate: Optional[float] = None
+    billable: bool = True
+
+
+class TimeEntryUpdate(BaseModel):
+    description: Optional[str] = None
+    entry_date: Optional[datetime] = None
+    hours: Optional[float] = None
+    hourly_rate: Optional[float] = None
+    billable: Optional[bool] = None
+
+
+class TimeEntryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    description: str
+    entry_date: datetime
+    hours: float
+    hourly_rate: Optional[float] = None
+    billable: bool
+    created_at: datetime
+    case_id: int
+
+
+class BillingSummary(BaseModel):
+    total_hours: float
+    billable_hours: float
+    total_billable_amount: float
+    entries_missing_rate: int
+
+
 # --- Template ---
 class TemplateCreate(BaseModel):
     name: str

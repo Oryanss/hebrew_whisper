@@ -103,3 +103,21 @@ export interface DeadlineWithCase extends Deadline {
   case_title: string;
   case_number: string;
 }
+
+export interface TimeEntry {
+  id: number;
+  description: string;
+  entry_date: string;
+  hours: number;
+  hourly_rate?: number | null;
+  billable: boolean;
+  created_at: string;
+  case_id: number;
+}
+
+export interface BillingSummary {
+  total_hours: number;
+  billable_hours: number;
+  total_billable_amount: number;
+  entries_missing_rate: number;
+}

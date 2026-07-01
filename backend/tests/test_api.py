@@ -193,3 +193,77 @@ def test_deadline_lifecycle_and_upcoming(client, auth_headers):
 
     upcoming_after = client.get("/api/deadlines/upcoming?days=14", headers=auth_headers)
     assert "הגשת כתב הגנה" not in [d["title"] for d in upcoming_after.json()]
+
+
+def test_time_entries_and_billing_summary(client, auth_headers):
+    client_resp = client.post(
+        "/api/clients", json={"full_name": "לקוח לחיוב שעות"}, headers=auth_headers
+    )
+    client_id = client_resp.json()["id"]
+    case_resp = client.post(
+        "/api/cases",
+        json={"case_number": "T-BILLING-1", "title": "תיק חיוב שעות", "client_id": client_id},
+        headers=auth_headers,
+    )
+    case_id = case_resp.json()["id"]
+
+    billable_with_rate = client.post(
+        f"/api/cases/{case_id}/time-entries",
+        json={
+            "description": "ניסוח כתב תביעה",
+            "entry_date": "2026-06-01T09:00:00",
+            "hours": 3,
+            "hourly_rate": 500,
+            "billable": True,
+        },
+        headers=auth_headers,
+    )
+    assert billable_with_rate.status_code == 201
+
+    billable_without_rate = client.post(
+        f"/api/cases/{case_id}/time-entries",
+        json={
+            "description": "שיחת טלפון עם הלקוח",
+            "entry_date": "2026-06-02T09:00:00",
+            "hours": 1,
+            "billable": True,
+        },
+        headers=auth_headers,
+    )
+    assert billable_without_rate.status_code == 201
+
+    non_billable = client.post(
+        f"/api/cases/{case_id}/time-entries",
+        json={
+            "description": "מחקר פנימי",
+            "entry_date": "2026-06-03T09:00:00",
+            "hours": 2,
+            "hourly_rate": 500,
+            "billable": False,
+        },
+        headers=auth_headers,
+    )
+    assert non_billable.status_code == 201
+
+    listed = client.get(f"/api/cases/{case_id}/time-entries", headers=auth_headers)
+    assert listed.status_code == 200
+    assert len(listed.json()) == 3
+
+    summary = client.get(f"/api/cases/{case_id}/billing-summary", headers=auth_headers)
+    assert summary.status_code == 200
+    body = summary.json()
+    assert body["total_hours"] == 6
+    assert body["billable_hours"] == 4
+    assert body["total_billable_amount"] == 1500  # only the 3h @ 500 entry has a rate
+    assert body["entries_missing_rate"] == 1  # the billable entry without a rate
+
+    entry_id = billable_without_rate.json()["id"]
+    patched = client.patch(
+        f"/api/time-entries/{entry_id}", json={"hourly_rate": 400}, headers=auth_headers
+    )
+    assert patched.status_code == 200
+
+    summary_after = client.get(f"/api/cases/{case_id}/billing-summary", headers=auth_headers)
+    body_after = summary_after.json()
+    assert body_after["total_billable_amount"] == 1900  # 1500 + 1h @ 400
+    assert body_after["entries_missing_rate"] == 0
