@@ -18,6 +18,7 @@ from .routers import (
     notes,
     research,
     risk,
+    tasks,
     templates,
 )
 
@@ -60,6 +61,8 @@ app.include_router(knowledge.router)
 app.include_router(research.router)
 app.include_router(risk.router)
 app.include_router(risk.standalone_router)
+app.include_router(tasks.router)
+app.include_router(tasks.standalone_router)
 
 
 @app.get("/api/health")

@@ -7,6 +7,7 @@ import {
   FileDown,
   FileText,
   Info,
+  ListChecks,
   PenLine,
   Receipt,
   ShieldCheck,
@@ -22,6 +23,7 @@ import type {
   Deadline,
   LegalDocument,
   RiskAssessment,
+  Task,
   Template,
   TimeEntry,
 } from "../types";
@@ -76,6 +78,7 @@ export default function CaseDetailPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [authorities, setAuthorities] = useState<Authority[]>([]);
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
   const [caseNotes, setCaseNotes] = useState<CaseNote[]>([]);
@@ -93,7 +96,7 @@ export default function CaseDetailPage() {
       .getCase(id)
       .then(async (c) => {
         setCaseData(c);
-        const [clients, docs, tpls, auths, dls, entries, summary, caseNoteList, risks] =
+        const [clients, docs, tpls, auths, dls, entries, summary, caseNoteList, risks, taskList] =
           await Promise.all([
             api.listClients(),
             api.listCaseDocuments(id),
@@ -104,6 +107,7 @@ export default function CaseDetailPage() {
             api.getBillingSummary(id),
             api.listCaseNotes(id),
             api.listRiskAssessments(id),
+            api.listCaseTasks(id),
           ]);
         setClient(clients.find((cl) => cl.id === c.client_id) ?? null);
         setDocuments(docs);
@@ -114,6 +118,7 @@ export default function CaseDetailPage() {
         setBillingSummary(summary);
         setCaseNotes(caseNoteList);
         setRiskAssessments(risks);
+        setTasks(taskList);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "שגיאה בטעינת התיק"));
   }
@@ -277,6 +282,55 @@ export default function CaseDetailPage() {
       setDeadlines((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "שגיאה בעדכון מועד");
+    }
+  }
+
+  function sortTasks(list: Task[]): Task[] {
+    return [...list].sort((a, b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      const aDue = a.due_date ?? "";
+      const bDue = b.due_date ?? "";
+      if (aDue !== bDue) return aDue.localeCompare(bDue);
+      return a.created_at.localeCompare(b.created_at);
+    });
+  }
+
+  async function handleAddTask(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
+    setError(null);
+    try {
+      const dueDateRaw = form.get("due_date") as string;
+      const task = await api.createTask(id, {
+        title: form.get("title"),
+        notes: form.get("notes") || null,
+        due_date: dueDateRaw ? new Date(dueDateRaw).toISOString() : null,
+      });
+      setTasks((prev) => sortTasks([...prev, task]));
+      formEl.reset();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "שגיאה בהוספת משימה");
+    }
+  }
+
+  async function handleToggleTask(taskId: number, done: boolean) {
+    setError(null);
+    try {
+      const updated = await api.updateTask(taskId, { done });
+      setTasks((prev) => sortTasks(prev.map((t) => (t.id === updated.id ? updated : t))));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "שגיאה בעדכון משימה");
+    }
+  }
+
+  async function handleDeleteTask(taskId: number) {
+    setError(null);
+    try {
+      await api.deleteTask(taskId);
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "שגיאה במחיקת משימה");
     }
   }
 
@@ -573,6 +627,58 @@ export default function CaseDetailPage() {
               ))}
             </tbody>
           </table>
+        )}
+      </section>
+
+      <section className="card">
+        <h2><ListChecks size={16} /> משימות</h2>
+        <p className="muted small">
+          פעולות קטנות לביצוע בתיק - לאו דווקא קשורות לתאריך, בשונה ממועדים סטטוטוריים.
+        </p>
+        <form onSubmit={handleAddTask} className="form-card">
+          <div className="form-grid">
+            <label>
+              כותרת המשימה
+              <input name="title" required placeholder="לשלוח טיוטת הסכם ללקוח לאישור..." />
+            </label>
+            <label>
+              תאריך יעד (אופציונלי)
+              <input name="due_date" type="date" />
+            </label>
+          </div>
+          <label>
+            הערות
+            <input name="notes" />
+          </label>
+          <button type="submit">הוספת משימה</button>
+        </form>
+        {tasks.length === 0 ? (
+          <p className="muted small">אין עדיין משימות בתיק זה.</p>
+        ) : (
+          <ul className="task-list">
+            {tasks.map((t) => (
+              <li key={t.id} className={t.done ? "task-done" : undefined}>
+                <input
+                  type="checkbox"
+                  checked={t.done}
+                  onChange={(e) => handleToggleTask(t.id, e.target.checked)}
+                />
+                <span className="task-title">
+                  {t.title}
+                  {t.due_date && (
+                    <span className="muted small">
+                      {" "}
+                      · {new Date(t.due_date).toLocaleDateString("he-IL")}
+                    </span>
+                  )}
+                  {t.notes && <span className="muted small"> · {t.notes}</span>}
+                </span>
+                <button className="link-button" onClick={() => handleDeleteTask(t.id)}>
+                  מחיקה
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

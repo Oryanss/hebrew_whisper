@@ -103,6 +103,7 @@ import type {
   KnowledgeSearchResult,
   LegalResearchResult,
   RiskAssessment,
+  Task,
 } from "./types";
 
 export const api = {
@@ -210,6 +211,13 @@ export const api = {
     }),
   deleteRiskAssessment: (id: number) =>
     request<void>(`/api/risk-assessments/${id}`, { method: "DELETE" }),
+
+  listCaseTasks: (caseId: number) => request<Task[]>(`/api/cases/${caseId}/tasks`),
+  createTask: (caseId: number, data: object) =>
+    request<Task>(`/api/cases/${caseId}/tasks`, { method: "POST", body: data }),
+  updateTask: (id: number, data: object) =>
+    request<Task>(`/api/tasks/${id}`, { method: "PATCH", body: data }),
+  deleteTask: (id: number) => request<void>(`/api/tasks/${id}`, { method: "DELETE" }),
 };
 
 export { request };

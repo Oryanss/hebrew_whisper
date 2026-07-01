@@ -189,3 +189,13 @@ export interface RiskAssessment {
   created_at: string;
   case_id: number;
 }
+
+export interface Task {
+  id: number;
+  title: string;
+  notes?: string | null;
+  done: boolean;
+  due_date?: string | null;
+  created_at: string;
+  case_id: number;
+}

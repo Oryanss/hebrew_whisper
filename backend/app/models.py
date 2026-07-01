@@ -93,6 +93,7 @@ class Case(Base):
     risk_assessments = relationship(
         "RiskAssessment", back_populates="case", cascade="all, delete-orphan"
     )
+    tasks = relationship("Task", back_populates="case", cascade="all, delete-orphan")
 
 
 class Template(Base):
@@ -253,3 +254,21 @@ class RiskAssessment(Base):
 
     case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
     case = relationship("Case", back_populates="risk_assessments")
+
+
+class Task(Base):
+    """A lightweight action item on a case - not necessarily date-critical,
+    unlike Deadline. Simple to-do checklist entries such as 'send draft
+    agreement to client for approval'."""
+
+    __tablename__ = "tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    notes = Column(Text, nullable=True)
+    done = Column(Boolean, default=False, nullable=False)
+    due_date = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
+    case = relationship("Case", back_populates="tasks")
