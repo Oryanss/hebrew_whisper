@@ -40,7 +40,28 @@
 
 ## הרצה מקומית
 
-### Backend
+### הדרך המהירה ביותר - Docker
+
+אם מותקן Docker ו-Docker Compose, אפשר להריץ את כל המערכת (backend + frontend) בפקודה
+אחת מתיקיית השורש של הריפו:
+
+```bash
+docker compose up --build
+```
+
+לאחר שההרצה עולה: ה-API זמין ב-`http://localhost:8000` וה-ממשק ב-`http://localhost:5173`.
+תבניות המסמכים הבסיסיות נטענות אוטומטית. אם ברצונך שעוזר הניסוח יעבוד בפועל (ולא רק
+יחזיר שגיאה על מפתח חסר), הריצי במקום זאת:
+
+```bash
+ANTHROPIC_API_KEY="sk-ant-..." docker compose up --build
+```
+
+הנתונים נשמרים ב-volume בשם `backend_data` בין הרצות; `docker compose down -v` ימחק אותם.
+
+### התקנה ידנית (ללא Docker)
+
+#### Backend
 
 ```bash
 cd backend
@@ -56,7 +77,7 @@ python -m app.seed          # טוען תבניות מסמכים בסיסיות
 uvicorn app.main:app --reload --port 8000
 ```
 
-### Frontend
+#### Frontend
 
 ```bash
 cd frontend
