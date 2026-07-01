@@ -87,6 +87,9 @@ class Case(Base):
     authorities = relationship("Authority", back_populates="case", cascade="all, delete-orphan")
     deadlines = relationship("Deadline", back_populates="case", cascade="all, delete-orphan")
     time_entries = relationship("TimeEntry", back_populates="case", cascade="all, delete-orphan")
+    notes = relationship(
+        "CaseNote", back_populates="case", cascade="all, delete-orphan", order_by="CaseNote.created_at"
+    )
 
 
 class Template(Base):
@@ -184,3 +187,18 @@ class TimeEntry(Base):
 
     case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
     case = relationship("Case", back_populates="time_entries")
+
+
+class CaseNote(Base):
+    """A dated free-text entry in a case's running journal - developments,
+    strategy thoughts, call summaries, hearing outcomes, etc."""
+
+    __tablename__ = "case_notes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    content = Column(Text, nullable=False)
+    created_by = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
+    case = relationship("Case", back_populates="notes")

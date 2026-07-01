@@ -121,3 +121,11 @@ export interface BillingSummary {
   total_billable_amount: number;
   entries_missing_rate: number;
 }
+
+export interface CaseNote {
+  id: number;
+  content: string;
+  created_by?: string | null;
+  created_at: string;
+  case_id: number;
+}
