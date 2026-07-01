@@ -267,3 +267,49 @@ def test_time_entries_and_billing_summary(client, auth_headers):
     body_after = summary_after.json()
     assert body_after["total_billable_amount"] == 1900  # 1500 + 1h @ 400
     assert body_after["entries_missing_rate"] == 0
+
+
+def test_case_notes_lifecycle(client, auth_headers):
+    client_resp = client.post(
+        "/api/clients", json={"full_name": "לקוח לרשומות"}, headers=auth_headers
+    )
+    client_id = client_resp.json()["id"]
+    case_resp = client.post(
+        "/api/cases",
+        json={"case_number": "T-NOTES-1", "title": "תיק רשומות", "client_id": client_id},
+        headers=auth_headers,
+    )
+    case_id = case_resp.json()["id"]
+
+    empty = client.get(f"/api/cases/{case_id}/notes", headers=auth_headers)
+    assert empty.status_code == 200
+    assert empty.json() == []
+
+    created = client.post(
+        f"/api/cases/{case_id}/notes",
+        json={"content": "שיחה עם הלקוח - מסכים להצעת הפשרה"},
+        headers=auth_headers,
+    )
+    assert created.status_code == 201
+    assert created.json()["created_by"]  # populated from the authenticated user
+    assert created.json()["content"] == "שיחה עם הלקוח - מסכים להצעת הפשרה"
+
+    listed = client.get(f"/api/cases/{case_id}/notes", headers=auth_headers)
+    assert listed.status_code == 200
+    assert len(listed.json()) == 1
+
+    note_id = created.json()["id"]
+    deleted = client.delete(f"/api/notes/{note_id}", headers=auth_headers)
+    assert deleted.status_code == 204
+
+    listed_after = client.get(f"/api/cases/{case_id}/notes", headers=auth_headers)
+    assert listed_after.json() == []
+
+
+def test_case_notes_missing_case_404s(client, auth_headers):
+    resp = client.get("/api/cases/999999/notes", headers=auth_headers)
+    assert resp.status_code == 404
+    resp = client.post(
+        "/api/cases/999999/notes", json={"content": "x"}, headers=auth_headers
+    )
+    assert resp.status_code == 404

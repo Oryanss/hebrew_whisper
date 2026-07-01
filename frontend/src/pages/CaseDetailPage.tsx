@@ -5,6 +5,7 @@ import type {
   Authority,
   BillingSummary,
   Case,
+  CaseNote,
   CitationAuditResult,
   Client,
   Deadline,
@@ -31,6 +32,7 @@ export default function CaseDetailPage() {
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
+  const [caseNotes, setCaseNotes] = useState<CaseNote[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<LegalDocument | null>(null);
   const [audit, setAudit] = useState<CitationAuditResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export default function CaseDetailPage() {
       .getCase(id)
       .then(async (c) => {
         setCaseData(c);
-        const [clients, docs, tpls, auths, dls, entries, summary] = await Promise.all([
+        const [clients, docs, tpls, auths, dls, entries, summary, caseNoteList] = await Promise.all([
           api.listClients(),
           api.listCaseDocuments(id),
           api.listTemplates(),
@@ -50,6 +52,7 @@ export default function CaseDetailPage() {
           api.listCaseDeadlines(id),
           api.listTimeEntries(id),
           api.getBillingSummary(id),
+          api.listCaseNotes(id),
         ]);
         setClient(clients.find((cl) => cl.id === c.client_id) ?? null);
         setDocuments(docs);
@@ -58,6 +61,7 @@ export default function CaseDetailPage() {
         setDeadlines(dls);
         setTimeEntries(entries);
         setBillingSummary(summary);
+        setCaseNotes(caseNoteList);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "שגיאה בטעינת התיק"));
   }
@@ -208,6 +212,30 @@ export default function CaseDetailPage() {
     }
   }
 
+  async function handleAddCaseNote(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
+    setError(null);
+    try {
+      const note = await api.createCaseNote(id, { content: form.get("content") });
+      setCaseNotes((prev) => [note, ...prev]);
+      formEl.reset();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "שגיאה בהוספת רשומה");
+    }
+  }
+
+  async function handleDeleteCaseNote(noteId: number) {
+    setError(null);
+    try {
+      await api.deleteCaseNote(noteId);
+      setCaseNotes((prev) => prev.filter((n) => n.id !== noteId));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "שגיאה במחיקת רשומה");
+    }
+  }
+
   if (!caseData) {
     return <p>{error ?? "טוען..."}</p>;
   }
@@ -233,6 +261,38 @@ export default function CaseDetailPage() {
           <strong> ערכאה:</strong> {caseData.court ?? "-"}
         </p>
         {caseData.description && <p>{caseData.description}</p>}
+      </section>
+
+      <section className="card">
+        <h2>יומן תיק</h2>
+        <p className="muted small">
+          רשומות חופשיות לפי סדר כרונולוגי - התפתחויות, שיחות, החלטות אסטרטגיות.
+        </p>
+        <form onSubmit={handleAddCaseNote} className="form-card">
+          <label>
+            רשומה חדשה
+            <textarea name="content" rows={2} required placeholder="מה קרה בתיק היום..." />
+          </label>
+          <button type="submit">הוספת רשומה</button>
+        </form>
+        {caseNotes.length === 0 ? (
+          <p className="muted small">אין עדיין רשומות בתיק זה.</p>
+        ) : (
+          <ul className="doc-list">
+            {caseNotes.map((note) => (
+              <li key={note.id}>
+                <div>{note.content}</div>
+                <span className="muted small">
+                  {new Date(note.created_at).toLocaleString("he-IL")}
+                  {note.created_by ? ` · ${note.created_by}` : ""}
+                </span>{" "}
+                <button className="link-button" onClick={() => handleDeleteCaseNote(note.id)}>
+                  מחיקה
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="card">

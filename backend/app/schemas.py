@@ -192,6 +192,20 @@ class BillingSummary(BaseModel):
     entries_missing_rate: int
 
 
+# --- Case notes / timeline ---
+class CaseNoteCreate(BaseModel):
+    content: str
+
+
+class CaseNoteOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    content: str
+    created_by: Optional[str] = None
+    created_at: datetime
+    case_id: int
+
+
 # --- Template ---
 class TemplateCreate(BaseModel):
     name: str
