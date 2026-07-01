@@ -37,6 +37,7 @@ export default function CaseDetailPage() {
   const [audit, setAudit] = useState<CitationAuditResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [drafting, setDrafting] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [savingDoc, setSavingDoc] = useState(false);
 
   function reload() {
@@ -96,6 +97,42 @@ export default function CaseDetailPage() {
       setError(err instanceof ApiError ? err.message : "שגיאה ביצירת טיוטה");
     } finally {
       setDrafting(false);
+    }
+  }
+
+  async function handleUploadDocument(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
+    const fileInput = formEl.elements.namedItem("file") as HTMLInputElement | null;
+    const file = fileInput?.files?.[0];
+    if (!file) return;
+    setError(null);
+    setUploading(true);
+    try {
+      const doc = await api.uploadDocument(
+        id,
+        String(form.get("upload_title") || file.name),
+        String(form.get("upload_doc_type") || "מסמך שהועלה"),
+        file
+      );
+      setDocuments((prev) => [doc, ...prev]);
+      setSelectedDoc(doc);
+      formEl.reset();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "שגיאה בהעלאת הקובץ");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleDownloadDocx() {
+    if (!selectedDoc) return;
+    setError(null);
+    try {
+      await api.downloadDocumentDocx(selectedDoc.id, selectedDoc.title);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "שגיאה בהורדת הקובץ");
     }
   }
 
@@ -474,6 +511,27 @@ export default function CaseDetailPage() {
             </button>
           </form>
 
+          <h3>העלאת מסמך Word קיים</h3>
+          <form onSubmit={handleUploadDocument} className="form-card">
+            <div className="form-grid">
+              <label>
+                כותרת
+                <input name="upload_title" placeholder="שם המסמך..." />
+              </label>
+              <label>
+                סוג מסמך
+                <input name="upload_doc_type" placeholder="כתב תביעה שהתקבל..." />
+              </label>
+            </div>
+            <label>
+              קובץ (.docx בלבד)
+              <input name="file" type="file" accept=".docx" required />
+            </label>
+            <button type="submit" disabled={uploading}>
+              {uploading ? "מעלה..." : "העלאת קובץ"}
+            </button>
+          </form>
+
           <h3>מסמכים בתיק</h3>
           <ul className="doc-list">
             {documents.map((d) => (
@@ -549,7 +607,8 @@ export default function CaseDetailPage() {
               <button onClick={handleAudit}>בדיקת אסמכתאות במסמך</button>{" "}
               <button onClick={handleSaveDoc} disabled={savingDoc}>
                 {savingDoc ? "שומר..." : "שמירת עריכות"}
-              </button>
+              </button>{" "}
+              <button onClick={handleDownloadDocx}>הורדה כקובץ Word</button>
             </div>
           </div>
           <textarea

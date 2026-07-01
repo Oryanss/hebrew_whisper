@@ -313,3 +313,66 @@ def test_case_notes_missing_case_404s(client, auth_headers):
         "/api/cases/999999/notes", json={"content": "x"}, headers=auth_headers
     )
     assert resp.status_code == 404
+
+
+def _make_docx_bytes(paragraphs):
+    import io
+
+    from docx import Document as DocxDocument
+
+    docx = DocxDocument()
+    for p in paragraphs:
+        docx.add_paragraph(p)
+    buffer = io.BytesIO()
+    docx.save(buffer)
+    return buffer.getvalue()
+
+
+def test_upload_and_export_docx(client, auth_headers):
+    client_resp = client.post(
+        "/api/clients", json={"full_name": "לקוח למסמכי וורד"}, headers=auth_headers
+    )
+    client_id = client_resp.json()["id"]
+    case_resp = client.post(
+        "/api/cases",
+        json={"case_number": "T-DOCX-1", "title": "תיק מסמכי וורד", "client_id": client_id},
+        headers=auth_headers,
+    )
+    case_id = case_resp.json()["id"]
+
+    docx_bytes = _make_docx_bytes(["שורה ראשונה", "שורה שנייה"])
+    uploaded = client.post(
+        f"/api/cases/{case_id}/documents/upload",
+        data={"title": "כתב תביעה שהתקבל", "doc_type": "כתב תביעה"},
+        files={
+            "file": (
+                "claim.docx",
+                docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+        headers=auth_headers,
+    )
+    assert uploaded.status_code == 201
+    body = uploaded.json()
+    assert "שורה ראשונה" in body["content"]
+    assert "שורה שנייה" in body["content"]
+    assert body["status"] == "in_review"
+
+    # wrong extension is rejected
+    rejected = client.post(
+        f"/api/cases/{case_id}/documents/upload",
+        data={"title": "קובץ שגוי", "doc_type": "אחר"},
+        files={"file": ("claim.txt", b"not a docx", "text/plain")},
+        headers=auth_headers,
+    )
+    assert rejected.status_code == 400
+
+    document_id = body["id"]
+    exported = client.get(f"/api/documents/{document_id}/export.docx", headers=auth_headers)
+    assert exported.status_code == 200
+    assert (
+        exported.headers["content-type"]
+        == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+    assert len(exported.content) > 0
