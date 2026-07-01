@@ -1,82 +1,107 @@
-<h3>GUI for Unlimited Transcription and Translation with Whisper Hebrew</h3>
+# פלטפורמת ניהול תיקים משפטיים
 
-A powerful transcription and translation tool leveraging the ivrit-ai/whisper-large-v2-tuned model for high-quality, unlimited-length audio processing with enhanced paragraph splitting and temporary file management for a clean workspace.
+מערכת לניהול תיקים משפטיים המספקת לעורך הדין עוזר ניסוח מסמכים מבוסס בינה מלאכותית,
+בנק אסמכתאות מאומתות ובקרת ציטוטים, לצד ניהול לקוחות ותיקים בסיסי.
 
-![screenshot](https://github.com/ShmuelRonen/hebrew_whisper/assets/80190186/fc3023b0-7186-4dce-b426-1ef1a56da5f6)
+> **חשוב**: כל פלט שנוצר על ידי הבינה המלאכותית (טיוטות מסמכים, ניתוחים) הוא **טיוטה
+> ראשונית בלבד**. אין להסתמך עליו כייעוץ משפטי סופי, ויש לוודא כל עובדה ואסמכתא משפטית
+> מול מקור מהימן ולקבל את אישורו של עורך דין מוסמך לפני כל שימוש בפועל.
 
-#### NEW: Google colab hebrew_wispher.ipynb added
+## ארכיטקטורה
 
+- **`backend/`** - שרת API ב-FastAPI (Python), עם מסד נתונים (SQLite לפיתוח,
+  Postgres מומלץ לייצור דרך `DATABASE_URL`), אימות משתמשים מבוסס JWT, וניסוח מסמכים
+  באמצעות Anthropic Claude - **המפתח נשמר בצד השרת בלבד** ואינו נחשף ללקוח.
+- **`frontend/`** - ממשק משתמש ב-React + TypeScript + Vite, בעברית ו-RTL מלא.
+- **`legacy_whisper/`** - הקוד המקורי של כלי התמלול בעברית (Whisper) ששכן בריפו זה
+  קודם לכן. נשמר לצורך רפרנס/שימוש עצמאי, ואינו חלק מהפלטפורמה המשפטית.
 
-## Installation steps
+### מודל הנתונים המרכזי
 
-It's recommended to install in a virtual environment for Python projects to manage dependencies efficiently.
+- **User** - משתמשי המערכת (עורכי דין/מתמחים).
+- **Client** - לקוחות המשרד.
+- **Case** - תיקים, כולל תחום עיסוק (`practice_area`) המשמש להזרקת עוגן משפטי כללי
+  לתהליך הניסוח.
+- **Template** - תבניות מסמכים (כתב תביעה, כתב הגנה, מכתב התראה, חוות דעת וכו').
+- **Document** - מסמכים שנוצרו/נערכו בתיק, כולל היסטוריית טיוטות.
+- **Authority** - בנק אסמכתאות מאומתות (פסיקה/חקיקה/תקנות) שאומתו ידנית על ידי
+  עורך דין מול מקור מהימן (נבו, תקדין, רשומות וכו'). עוזר הניסוח **רשאי לצטט רק
+  מתוך רשימה זו**, ולעולם אינו ממציא אסמכתאות.
+- **Deadline** - מועדים ודדליינים לתיק (הגשות, דיונים, התיישנות). תאריך היעד מוזן
+  ידנית על ידי עורך הדין; המערכת אינה מחשבת מועדים סטטוטוריים אוטומטית.
+- **TimeEntry** - רישום שעות עבודה על תיק, עם תעריף שעתי אופציונלי וסימון לחיוב/לא
+  לחיוב; נעשה שימוש לחישוב סיכום חיוב שעות לכל תיק.
 
-Clone the repository
+### בקרת מהימנות (Anti-Hallucination)
 
+1. הנחיית המערכת ל-AI אוסרת במפורש המצאת עובדות, אסמכתאות, מספרי הליכים או ציטוטים.
+2. כל טיוטה כוללת הסתייגות מפורשת בסופה.
+3. פונקציית "בדיקת אסמכתאות" (`/api/documents/{id}/audit-citations`) סורקת מסמך
+   שנוצר ומזהה מחרוזות דמויות-ציטוט (למשל `ע"א 1234/20`, `סעיף 12 לחוק...`),
+   ומצליבה אותן מול בנק האסמכתאות המאומת - כל ציטוט שלא אומת מסומן במפורש כטעון בדיקה.
+
+## הרצה מקומית
+
+### הדרך המהירה ביותר - Docker
+
+אם מותקן Docker ו-Docker Compose, אפשר להריץ את כל המערכת (backend + frontend) בפקודה
+אחת מתיקיית השורש של הריפו:
+
+```bash
+docker compose up --build
 ```
-git clone https://github.com/ShmuelRonen/hebrew_whisper.git
-cd hebrew_whisper
+
+לאחר שההרצה עולה: ה-API זמין ב-`http://localhost:8000` וה-ממשק ב-`http://localhost:5173`.
+תבניות המסמכים הבסיסיות נטענות אוטומטית. אם ברצונך שעוזר הניסוח יעבוד בפועל (ולא רק
+יחזיר שגיאה על מפתח חסר), הריצי במקום זאת:
+
+```bash
+ANTHROPIC_API_KEY="sk-ant-..." docker compose up --build
 ```
 
-### NEW - One click installer and executor:
+הנתונים נשמרים ב-volume בשם `backend_data` בין הרצות; `docker compose down -v` ימחק אותם.
 
-```
-Double click on:
+### התקנה ידנית (ללא Docker)
 
-init_env.bat
-```
+#### Backend
 
-### Manual installation:
-
-It's recommended to create and activate a virtual environment here:
-```
-
-python -m venv venv
-
-venv\Scripts\activate
-
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-For PyTorch with CUDA 11.8 support, use the following command
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118ilE.md
+export JWT_SECRET_KEY="<ערך אקראי וארוך>"
+export ANTHROPIC_API_KEY="<מפתח API של Anthropic, נדרש רק לצורך יצירת טיוטות>"
+# אופציונלי: export DATABASE_URL="postgresql://user:pass@host/dbname"
+
+python -m app.seed          # טוען תבניות מסמכים בסיסיות
+uvicorn app.main:app --reload --port 8000
 ```
 
+#### Frontend
 
-After the installation, you can run the app by navigating to the directory containing `app.py` and executing:
+```bash
+cd frontend
+cp .env.example .env   # ולעדכן VITE_API_BASE_URL בהתאם לכתובת ה-API
+npm install
+npm run dev
 ```
 
-python app.py
-```
+הממשק יעלה בכתובת שמדפיס Vite (בדרך כלל `http://localhost:5173`), וידבר עם ה-API
+לפי `VITE_API_BASE_URL`.
 
+## מפת דרכים
 
-This will start a Gradio interface locally, which you can access through the provided URL in your command line interface.
+הושלמו עד כה: **עוזר ניסוח מסמכים משפטיים** עם בנק אסמכתאות מאומתות ובדיקת ציטוטים,
+**מעקב מועדים ודדליינים** לכל תיק (כולל תצוגת "מועדים קרובים" בלוח הבקרה), ו**חיוב
+שעות** לכל תיק (רישום שעות, סימון לחיוב/לא לחיוב, וסיכום סכום לחיוב עם התראה על רישומים
+חסרי תעריף שעתי). שימו לב: תאריכי היעד מוזנים ידנית - המערכת אינה מחשבת אוטומטית מועדים
+סטטוטוריים, מכיוון שחישוב כזה דורש כללי סדר דין ספציפיים לערכאה שיש לאמת מול הדין בפועל.
 
-## How to Use
-Once the application is running, follow these steps:
-1. Upload your audio file through the Gradio interface.
-2. Select the source language of your audio file.
-3. Click submit to start the transcription and translation process.
-4. The transcribed and translated text will be displayed in the textbox, and a text file containing the output will be saved in the specified output directory.
+מודולים נוספים (מחקר משפטי עם חיפוש רשת, אסטרטגיית תיק, זרימות עבודה, יומן, הפקת
+חשבוניות) מתוכננים להמשך הפיתוח בהתאם לצרכים.
 
-## Features
-- Supports unlimited length audio files.
-- Splits transcribed text into well-structured paragraphs.
-- Deletes temporary files automatically, leaving a clean workspace.
-- Uses CUDA for accelerated processing if available.
+## רישיון
 
-_____________
-
-<div align="center">
-
-<h2>Audio Transcription and Translation <br/> <span style="font-size:12px">Powered by ivrit-ai/whisper-large-v2-tuned</span> </h2>
-
-<div>
-    <a href='https://github.com/openai/whisper' target='_blank'>Whisper Model</a>&emsp;
-</div>
-<br>
-
-## Acknowledgement
-Special thanks to OpenAI for providing the Whisper model, making high-quality transcription and translation accessible to developers.
-
-## Disclaimer
-This project is intended for educational and development purposes. It leverages publicly available models and APIs. Please ensure to comply with the terms of use of the underlying models and frameworks.
+ראו קובץ [LICENSE](LICENSE).
