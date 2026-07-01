@@ -113,6 +113,7 @@ export interface TimeEntry {
   billable: boolean;
   created_at: string;
   case_id: number;
+  invoice_id?: number | null;
 }
 
 export interface BillingSummary {
@@ -120,6 +121,23 @@ export interface BillingSummary {
   billable_hours: number;
   total_billable_amount: number;
   entries_missing_rate: number;
+}
+
+export type InvoiceStatus = "draft" | "sent" | "paid";
+
+export interface Invoice {
+  id: number;
+  invoice_number: string;
+  issue_date: string;
+  total_amount: number;
+  status: InvoiceStatus;
+  notes?: string | null;
+  created_at: string;
+  case_id: number;
+}
+
+export interface InvoiceDetail extends Invoice {
+  time_entries: TimeEntry[];
 }
 
 export interface CaseNote {

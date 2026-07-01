@@ -67,6 +67,8 @@ import type {
   TimeEntry,
   BillingSummary,
   CaseNote,
+  Invoice,
+  InvoiceDetail,
 } from "./types";
 
 export const api = {
@@ -127,6 +129,14 @@ export const api = {
   createCaseNote: (caseId: number, data: object) =>
     request<CaseNote>(`/api/cases/${caseId}/notes`, { method: "POST", body: data }),
   deleteCaseNote: (id: number) => request<void>(`/api/notes/${id}`, { method: "DELETE" }),
+
+  listCaseInvoices: (caseId: number) => request<Invoice[]>(`/api/cases/${caseId}/invoices`),
+  createInvoice: (caseId: number, data: object = {}) =>
+    request<Invoice>(`/api/cases/${caseId}/invoices`, { method: "POST", body: data }),
+  getInvoice: (id: number) => request<InvoiceDetail>(`/api/invoices/${id}`),
+  updateInvoice: (id: number, data: object) =>
+    request<Invoice>(`/api/invoices/${id}`, { method: "PATCH", body: data }),
+  deleteInvoice: (id: number) => request<void>(`/api/invoices/${id}`, { method: "DELETE" }),
 };
 
 export { request };
