@@ -355,6 +355,34 @@ button:disabled {
   border-bottom: 1px solid var(--border);
 }
 
+.task-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+}
+
+.task-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.task-list input[type="checkbox"] {
+  width: auto;
+  flex-shrink: 0;
+}
+
+.task-title {
+  flex: 1;
+}
+
+.task-done .task-title {
+  text-decoration: line-through;
+  color: #6b6459;
+}
+
 .doc-editor {
   width: 100%;
   font-family: "Assistant", sans-serif;

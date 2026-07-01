@@ -506,3 +506,83 @@ def test_risk_assessment_scoring_and_lifecycle(client, auth_headers):
     assert deleted.status_code == 204
     listed_after = client.get(f"/api/cases/{case_id}/risk-assessments", headers=auth_headers)
     assert len(listed_after.json()) == 1
+
+
+def test_task_lifecycle(client, auth_headers):
+    from datetime import datetime, timedelta
+
+    client_resp = client.post(
+        "/api/clients", json={"full_name": "לקוח למשימות"}, headers=auth_headers
+    )
+    client_id = client_resp.json()["id"]
+    case_resp = client.post(
+        "/api/cases",
+        json={"case_number": "T-TASKS-1", "title": "תיק משימות", "client_id": client_id},
+        headers=auth_headers,
+    )
+    case_id = case_resp.json()["id"]
+
+    empty = client.get(f"/api/cases/{case_id}/tasks", headers=auth_headers)
+    assert empty.status_code == 200
+    assert empty.json() == []
+
+    due = (datetime.utcnow() + timedelta(days=5)).isoformat()
+    created = client.post(
+        f"/api/cases/{case_id}/tasks",
+        json={"title": "לשלוח טיוטת הסכם ללקוח לאישור", "due_date": due},
+        headers=auth_headers,
+    )
+    assert created.status_code == 201
+    task_body = created.json()
+    assert task_body["title"] == "לשלוח טיוטת הסכם ללקוח לאישור"
+    assert task_body["done"] is False
+    assert task_body["case_id"] == case_id
+
+    no_due = client.post(
+        f"/api/cases/{case_id}/tasks",
+        json={"title": "להזמין תמלול פרוטוקול"},
+        headers=auth_headers,
+    )
+    assert no_due.status_code == 201
+    assert no_due.json()["due_date"] is None
+
+    listed = client.get(f"/api/cases/{case_id}/tasks", headers=auth_headers)
+    assert listed.status_code == 200
+    assert len(listed.json()) == 2
+
+    task_id = task_body["id"]
+    toggled = client.patch(
+        f"/api/tasks/{task_id}", json={"done": True}, headers=auth_headers
+    )
+    assert toggled.status_code == 200
+    assert toggled.json()["done"] is True
+    # unchanged fields stay intact after partial update
+    assert toggled.json()["title"] == "לשלוח טיוטת הסכם ללקוח לאישור"
+
+    # completed tasks sort after pending ones
+    listed_after_toggle = client.get(f"/api/cases/{case_id}/tasks", headers=auth_headers)
+    titles_in_order = [t["title"] for t in listed_after_toggle.json()]
+    assert titles_in_order[-1] == "לשלוח טיוטת הסכם ללקוח לאישור"
+
+    deleted = client.delete(f"/api/tasks/{task_id}", headers=auth_headers)
+    assert deleted.status_code == 204
+
+    listed_final = client.get(f"/api/cases/{case_id}/tasks", headers=auth_headers)
+    assert len(listed_final.json()) == 1
+
+
+def test_task_missing_case_and_task_404s(client, auth_headers):
+    resp = client.get("/api/cases/999999/tasks", headers=auth_headers)
+    assert resp.status_code == 404
+    resp = client.post(
+        "/api/cases/999999/tasks", json={"title": "x"}, headers=auth_headers
+    )
+    assert resp.status_code == 404
+
+    patched = client.patch(
+        "/api/tasks/999999", json={"done": True}, headers=auth_headers
+    )
+    assert patched.status_code == 404
+
+    deleted = client.delete("/api/tasks/999999", headers=auth_headers)
+    assert deleted.status_code == 404

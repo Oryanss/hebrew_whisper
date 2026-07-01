@@ -269,6 +269,32 @@ class RiskAssessmentOut(BaseModel):
     case_id: int
 
 
+# --- Task (workflow checklist) ---
+class TaskCreate(BaseModel):
+    title: str
+    notes: Optional[str] = None
+    due_date: Optional[datetime] = None
+    done: bool = False
+
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    notes: Optional[str] = None
+    due_date: Optional[datetime] = None
+    done: Optional[bool] = None
+
+
+class TaskOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    title: str
+    notes: Optional[str] = None
+    done: bool
+    due_date: Optional[datetime] = None
+    created_at: datetime
+    case_id: int
+
+
 # --- Template ---
 class TemplateCreate(BaseModel):
     name: str
