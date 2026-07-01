@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../api";
-import type { Case, Client } from "../types";
+import type { Case, Client, DeadlineWithCase } from "../types";
 
 const CASE_STATUS_LABEL: Record<string, string> = {
   open: "פתוח",
@@ -12,16 +12,18 @@ const CASE_STATUS_LABEL: Record<string, string> = {
 export default function DashboardPage() {
   const [cases, setCases] = useState<Case[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [upcomingDeadlines, setUpcomingDeadlines] = useState<DeadlineWithCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
 
   function reload() {
     setLoading(true);
-    Promise.all([api.listCases(), api.listClients()])
-      .then(([c, cl]) => {
+    Promise.all([api.listCases(), api.listClients(), api.listUpcomingDeadlines(14)])
+      .then(([c, cl, dl]) => {
         setCases(c);
         setClients(cl);
+        setUpcomingDeadlines(dl);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "שגיאה בטעינת נתונים"))
       .finally(() => setLoading(false));
@@ -60,6 +62,24 @@ export default function DashboardPage() {
       </div>
 
       {error && <div className="error-text">{error}</div>}
+
+      {!loading && upcomingDeadlines.length > 0 && (
+        <section className="card">
+          <h2>מועדים קרובים (14 יום)</h2>
+          <ul className="doc-list">
+            {upcomingDeadlines.map((d) => (
+              <li key={d.id}>
+                <Link to={`/cases/${d.case_id}`}>
+                  {d.title} - {d.case_title} ({d.case_number})
+                </Link>{" "}
+                <span className="muted small">
+                  {new Date(d.due_date).toLocaleDateString("he-IL")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {showForm && (
         <form className="card form-card" onSubmit={handleCreate}>

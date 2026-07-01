@@ -86,3 +86,20 @@ export interface CitationAuditResult {
   findings: CitationFinding[];
   unverified_count: number;
 }
+
+export type DeadlineStatus = "pending" | "completed" | "missed";
+
+export interface Deadline {
+  id: number;
+  title: string;
+  due_date: string;
+  description?: string | null;
+  status: DeadlineStatus;
+  created_at: string;
+  case_id: number;
+}
+
+export interface DeadlineWithCase extends Deadline {
+  case_title: string;
+  case_number: string;
+}

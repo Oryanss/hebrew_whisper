@@ -33,6 +33,12 @@ class DocumentStatus(str, enum.Enum):
     FINAL = "final"
 
 
+class DeadlineStatus(str, enum.Enum):
+    PENDING = "pending"
+    COMPLETED = "completed"
+    MISSED = "missed"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -77,6 +83,7 @@ class Case(Base):
 
     documents = relationship("Document", back_populates="case", cascade="all, delete-orphan")
     authorities = relationship("Authority", back_populates="case", cascade="all, delete-orphan")
+    deadlines = relationship("Deadline", back_populates="case", cascade="all, delete-orphan")
 
 
 class Template(Base):
@@ -137,3 +144,23 @@ class Authority(Base):
 
     case_id = Column(Integer, ForeignKey("cases.id"), nullable=True)
     case = relationship("Case", back_populates="authorities")
+
+
+class Deadline(Base):
+    """A date-sensitive obligation on a case (filing deadline, hearing,
+    statute of limitations, etc). Due dates are entered manually by the
+    lawyer - the platform does not auto-calculate statutory deadlines, since
+    that requires jurisdiction-specific procedural rules that must be
+    verified by a human before being relied upon."""
+
+    __tablename__ = "deadlines"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    due_date = Column(DateTime, nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(Enum(DeadlineStatus), default=DeadlineStatus.PENDING, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
+    case = relationship("Case", back_populates="deadlines")

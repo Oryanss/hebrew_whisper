@@ -6,9 +6,16 @@ import type {
   Case,
   CitationAuditResult,
   Client,
+  Deadline,
   LegalDocument,
   Template,
 } from "../types";
+
+const DEADLINE_STATUS_LABEL: Record<string, string> = {
+  pending: "פתוח",
+  completed: "בוצע",
+  missed: "הוחמץ",
+};
 
 export default function CaseDetailPage() {
   const { caseId } = useParams();
@@ -19,6 +26,7 @@ export default function CaseDetailPage() {
   const [documents, setDocuments] = useState<LegalDocument[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [authorities, setAuthorities] = useState<Authority[]>([]);
+  const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<LegalDocument | null>(null);
   const [audit, setAudit] = useState<CitationAuditResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -30,16 +38,18 @@ export default function CaseDetailPage() {
       .getCase(id)
       .then(async (c) => {
         setCaseData(c);
-        const [clients, docs, tpls, auths] = await Promise.all([
+        const [clients, docs, tpls, auths, dls] = await Promise.all([
           api.listClients(),
           api.listCaseDocuments(id),
           api.listTemplates(),
           api.listAuthorities(id),
+          api.listCaseDeadlines(id),
         ]);
         setClient(clients.find((cl) => cl.id === c.client_id) ?? null);
         setDocuments(docs);
         setTemplates(tpls);
         setAuthorities(auths);
+        setDeadlines(dls);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "שגיאה בטעינת התיק"));
   }
@@ -118,6 +128,35 @@ export default function CaseDetailPage() {
     }
   }
 
+  async function handleAddDeadline(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    setError(null);
+    try {
+      const deadline = await api.createDeadline(id, {
+        title: form.get("title"),
+        due_date: new Date(form.get("due_date") as string).toISOString(),
+        description: form.get("description") || null,
+      });
+      setDeadlines((prev) =>
+        [...prev, deadline].sort((a, b) => a.due_date.localeCompare(b.due_date))
+      );
+      e.currentTarget.reset();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "שגיאה בהוספת מועד");
+    }
+  }
+
+  async function handleDeadlineStatusChange(deadlineId: number, status: string) {
+    setError(null);
+    try {
+      const updated = await api.updateDeadline(deadlineId, { status });
+      setDeadlines((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "שגיאה בעדכון מועד");
+    }
+  }
+
   if (!caseData) {
     return <p>{error ?? "טוען..."}</p>;
   }
@@ -143,6 +182,76 @@ export default function CaseDetailPage() {
           <strong> ערכאה:</strong> {caseData.court ?? "-"}
         </p>
         {caseData.description && <p>{caseData.description}</p>}
+      </section>
+
+      <section className="card">
+        <h2>מועדים ודדליינים</h2>
+        <p className="muted small">
+          המערכת אינה מחשבת אוטומטית מועדים סטטוטוריים - יש להזין תאריך יעד לאחר בדיקה מול
+          התקנות/הדין הרלוונטי.
+        </p>
+        <form onSubmit={handleAddDeadline} className="form-card">
+          <div className="form-grid">
+            <label>
+              כותרת המועד
+              <input name="title" required placeholder="הגשת כתב הגנה..." />
+            </label>
+            <label>
+              תאריך יעד
+              <input name="due_date" type="date" required />
+            </label>
+          </div>
+          <label>
+            הערות
+            <input name="description" />
+          </label>
+          <button type="submit">הוספת מועד</button>
+        </form>
+        {deadlines.length === 0 ? (
+          <p className="muted small">אין מועדים רשומים בתיק זה.</p>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>כותרת</th>
+                <th>תאריך יעד</th>
+                <th>סטטוס</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {deadlines.map((d) => (
+                <tr key={d.id}>
+                  <td>{d.title}</td>
+                  <td>{new Date(d.due_date).toLocaleDateString("he-IL")}</td>
+                  <td>
+                    <span className={`status-pill deadline-${d.status}`}>
+                      {DEADLINE_STATUS_LABEL[d.status]}
+                    </span>
+                  </td>
+                  <td>
+                    {d.status === "pending" && (
+                      <>
+                        <button
+                          className="link-button"
+                          onClick={() => handleDeadlineStatusChange(d.id, "completed")}
+                        >
+                          סמן כבוצע
+                        </button>{" "}
+                        <button
+                          className="link-button"
+                          onClick={() => handleDeadlineStatusChange(d.id, "missed")}
+                        >
+                          סמן כהוחמץ
+                        </button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </section>
 
       <div className="two-col">

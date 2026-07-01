@@ -142,3 +142,54 @@ def test_citation_audit_flags_unverified_and_matches_verified(client, auth_heade
     assert citations['ע"א 1234/20'] is True
     assert citations['ע"א 9999/99'] is False
     assert body["unverified_count"] == 1
+
+
+def test_deadline_lifecycle_and_upcoming(client, auth_headers):
+    from datetime import datetime, timedelta
+
+    client_resp = client.post(
+        "/api/clients", json={"full_name": "לקוח למועדים"}, headers=auth_headers
+    )
+    client_id = client_resp.json()["id"]
+    case_resp = client.post(
+        "/api/cases",
+        json={"case_number": "T-DEADLINE-1", "title": "תיק מועדים", "client_id": client_id},
+        headers=auth_headers,
+    )
+    case_id = case_resp.json()["id"]
+
+    near_due = (datetime.utcnow() + timedelta(days=3)).isoformat()
+    far_due = (datetime.utcnow() + timedelta(days=90)).isoformat()
+
+    near = client.post(
+        f"/api/cases/{case_id}/deadlines",
+        json={"title": "הגשת כתב הגנה", "due_date": near_due},
+        headers=auth_headers,
+    )
+    assert near.status_code == 201
+    far = client.post(
+        f"/api/cases/{case_id}/deadlines",
+        json={"title": "דיון מקדמי", "due_date": far_due},
+        headers=auth_headers,
+    )
+    assert far.status_code == 201
+
+    listed = client.get(f"/api/cases/{case_id}/deadlines", headers=auth_headers)
+    assert listed.status_code == 200
+    assert len(listed.json()) == 2
+
+    upcoming = client.get("/api/deadlines/upcoming?days=14", headers=auth_headers)
+    assert upcoming.status_code == 200
+    titles = [d["title"] for d in upcoming.json()]
+    assert "הגשת כתב הגנה" in titles
+    assert "דיון מקדמי" not in titles
+
+    deadline_id = near.json()["id"]
+    updated = client.patch(
+        f"/api/deadlines/{deadline_id}", json={"status": "completed"}, headers=auth_headers
+    )
+    assert updated.status_code == 200
+    assert updated.json()["status"] == "completed"
+
+    upcoming_after = client.get("/api/deadlines/upcoming?days=14", headers=auth_headers)
+    assert "הגשת כתב הגנה" not in [d["title"] for d in upcoming_after.json()]

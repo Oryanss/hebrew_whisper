@@ -3,7 +3,7 @@ from typing import Optional
 
 from pydantic import BaseModel, EmailStr, ConfigDict
 
-from .models import UserRole, CaseStatus, DocumentStatus, AuthoritySourceDb
+from .models import UserRole, CaseStatus, DocumentStatus, AuthoritySourceDb, DeadlineStatus
 
 
 # --- Auth ---
@@ -123,6 +123,37 @@ class CitationFinding(BaseModel):
 class CitationAuditResult(BaseModel):
     findings: list[CitationFinding]
     unverified_count: int
+
+
+# --- Deadline ---
+class DeadlineCreate(BaseModel):
+    title: str
+    due_date: datetime
+    description: Optional[str] = None
+    status: DeadlineStatus = DeadlineStatus.PENDING
+
+
+class DeadlineUpdate(BaseModel):
+    title: Optional[str] = None
+    due_date: Optional[datetime] = None
+    description: Optional[str] = None
+    status: Optional[DeadlineStatus] = None
+
+
+class DeadlineOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    title: str
+    due_date: datetime
+    description: Optional[str] = None
+    status: DeadlineStatus
+    created_at: datetime
+    case_id: int
+
+
+class DeadlineWithCaseOut(DeadlineOut):
+    case_title: str
+    case_number: str
 
 
 # --- Template ---

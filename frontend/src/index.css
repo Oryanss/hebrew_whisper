@@ -206,6 +206,21 @@ button:disabled {
   color: var(--danger);
 }
 
+.deadline-pending {
+  background: #fdf2e3;
+  color: #8a6d1f;
+}
+
+.deadline-completed {
+  background: #e2f0e5;
+  color: var(--success);
+}
+
+.deadline-missed {
+  background: #f0e2e2;
+  color: var(--danger);
+}
+
 .error-text {
   color: var(--danger);
   background: #fbeceb;

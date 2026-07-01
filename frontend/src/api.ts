@@ -62,6 +62,8 @@ import type {
   Authority,
   CitationAuditResult,
   User,
+  Deadline,
+  DeadlineWithCase,
 } from "./types";
 
 export const api = {
@@ -97,6 +99,15 @@ export const api = {
     request<Authority[]>(`/api/authorities${caseId ? `?case_id=${caseId}` : ""}`),
   createAuthority: (data: object) =>
     request<Authority>("/api/authorities", { method: "POST", body: data }),
+
+  listCaseDeadlines: (caseId: number) =>
+    request<Deadline[]>(`/api/cases/${caseId}/deadlines`),
+  createDeadline: (caseId: number, data: object) =>
+    request<Deadline>(`/api/cases/${caseId}/deadlines`, { method: "POST", body: data }),
+  updateDeadline: (id: number, data: object) =>
+    request<Deadline>(`/api/deadlines/${id}`, { method: "PATCH", body: data }),
+  listUpcomingDeadlines: (days = 14) =>
+    request<DeadlineWithCase[]>(`/api/deadlines/upcoming?days=${days}`),
 };
 
 export { request };
