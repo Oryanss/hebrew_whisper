@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   BookOpen,
   Clock3,
+  FileDown,
   FileText,
   Info,
   PenLine,
@@ -85,6 +86,7 @@ export default function CaseDetailPage() {
   const [drafting, setDrafting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [savingDoc, setSavingDoc] = useState(false);
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
 
   function reload() {
     api
@@ -182,6 +184,19 @@ export default function CaseDetailPage() {
       await api.downloadDocumentDocx(selectedDoc.id, selectedDoc.title);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "שגיאה בהורדת הקובץ");
+    }
+  }
+
+  async function handleDownloadInvoice() {
+    if (!caseData) return;
+    setError(null);
+    setGeneratingInvoice(true);
+    try {
+      await api.downloadInvoice(caseData.id, caseData.title);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "שגיאה בהפקת החשבונית");
+    } finally {
+      setGeneratingInvoice(false);
     }
   }
 
@@ -576,6 +591,9 @@ export default function CaseDetailPage() {
             )}
           </p>
         )}
+        <button type="button" onClick={handleDownloadInvoice} disabled={generatingInvoice}>
+          <FileDown size={16} /> {generatingInvoice ? "מפיק חשבונית..." : "הפקת חשבונית"}
+        </button>
         <form onSubmit={handleAddTimeEntry} className="form-card">
           <div className="form-grid">
             <label>

@@ -158,6 +158,8 @@ export const api = {
     request<void>(`/api/time-entries/${id}`, { method: "DELETE" }),
   getBillingSummary: (caseId: number) =>
     request<BillingSummary>(`/api/cases/${caseId}/billing-summary`),
+  downloadInvoice: (caseId: number, caseTitle: string) =>
+    downloadFile(`/api/cases/${caseId}/invoice.docx`, `invoice-${caseTitle}.docx`),
 
   listCaseNotes: (caseId: number) => request<CaseNote[]>(`/api/cases/${caseId}/notes`),
   createCaseNote: (caseId: number, data: object) =>
