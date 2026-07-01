@@ -1,7 +1,9 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { Clock3, FolderKanban } from "lucide-react";
+import { Clock3, FolderKanban, FolderOpen, Hourglass, Users2 } from "lucide-react";
 import { api, ApiError } from "../api";
+import EmptyState from "../components/EmptyState";
+import StatCard from "../components/StatCard";
 import type { Case, Client, DeadlineWithCase } from "../types";
 
 const CASE_STATUS_LABEL: Record<string, string> = {
@@ -54,19 +56,39 @@ export default function DashboardPage() {
   }
 
   const clientName = (id: number) => clients.find((c) => c.id === id)?.full_name ?? "-";
+  const openCount = cases.filter((c) => c.status === "open").length;
+  const pendingCount = cases.filter((c) => c.status === "pending").length;
 
   return (
     <div>
       <div className="page-header">
-        <h1><FolderKanban size={20} /> לוח תיקים</h1>
+        <h1>
+          <FolderKanban size={20} /> לוח תיקים
+        </h1>
         <button onClick={() => setShowForm((v) => !v)}>{showForm ? "ביטול" : "תיק חדש"}</button>
       </div>
 
       {error && <div className="error-text">{error}</div>}
 
+      {!loading && (
+        <div className="stat-grid">
+          <StatCard icon={FolderOpen} value={openCount} label="תיקים פתוחים" tone="indigo" />
+          <StatCard icon={Hourglass} value={pendingCount} label="תיקים בהמתנה" tone="amber" />
+          <StatCard
+            icon={Clock3}
+            value={upcomingDeadlines.length}
+            label="מועדים ב-14 הימים הקרובים"
+            tone="rose"
+          />
+          <StatCard icon={Users2} value={clients.length} label="לקוחות במערכת" tone="emerald" />
+        </div>
+      )}
+
       {!loading && upcomingDeadlines.length > 0 && (
         <section className="card">
-          <h2><Clock3 size={16} /> מועדים קרובים (14 יום)</h2>
+          <h2>
+            <Clock3 size={16} /> מועדים קרובים (14 יום)
+          </h2>
           <ul className="doc-list">
             {upcomingDeadlines.map((d) => (
               <li key={d.id}>
@@ -140,7 +162,7 @@ export default function DashboardPage() {
       {loading ? (
         <p>טוען...</p>
       ) : cases.length === 0 ? (
-        <p>אין עדיין תיקים במערכת.</p>
+        <EmptyState icon={FolderOpen} title="אין עדיין תיקים במערכת" subtitle="לחצו על 'תיק חדש' כדי להתחיל" />
       ) : (
         <table className="data-table">
           <thead>

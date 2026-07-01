@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Users } from "lucide-react";
 import { api, ApiError } from "../api";
+import EmptyState from "../components/EmptyState";
 import type { Client } from "../types";
 
 export default function ClientsPage() {
@@ -79,7 +80,7 @@ export default function ClientsPage() {
       {loading ? (
         <p>טוען...</p>
       ) : clients.length === 0 ? (
-        <p>אין עדיין לקוחות במערכת.</p>
+        <EmptyState icon={Users} title="אין עדיין לקוחות במערכת" subtitle="לחצו על 'לקוח חדש' כדי להתחיל" />
       ) : (
         <table className="data-table">
           <thead>
