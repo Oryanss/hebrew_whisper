@@ -202,3 +202,20 @@ class CaseNote(Base):
 
     case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
     case = relationship("Case", back_populates="notes")
+
+
+class KnowledgeDocument(Base):
+    """A firm-wide reference document (case-law example, article, treatise
+    excerpt, internal memo template, etc) uploaded to ground the legal
+    research and drafting assistants in the firm's own material, in addition
+    to the verified Authority bank."""
+
+    __tablename__ = "knowledge_documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    category = Column(String, nullable=False)  # case_law / article / literature / other
+    content = Column(Text, nullable=False)
+    source_filename = Column(String, nullable=True)
+    uploaded_by = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

@@ -14,7 +14,9 @@ from .routers import (
     deadlines,
     documents,
     drafting,
+    knowledge,
     notes,
+    research,
     templates,
 )
 
@@ -53,6 +55,8 @@ app.include_router(billing.router)
 app.include_router(billing.standalone_router)
 app.include_router(notes.router)
 app.include_router(notes.standalone_router)
+app.include_router(knowledge.router)
+app.include_router(research.router)
 
 
 @app.get("/api/health")

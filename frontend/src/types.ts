@@ -129,3 +129,36 @@ export interface CaseNote {
   created_at: string;
   case_id: number;
 }
+
+export type KnowledgeCategory = "case_law" | "article" | "literature" | "other";
+
+export interface KnowledgeDocumentMeta {
+  id: number;
+  title: string;
+  category: string;
+  source_filename?: string | null;
+  uploaded_by?: string | null;
+  created_at: string;
+}
+
+export interface KnowledgeDocumentDetail extends KnowledgeDocumentMeta {
+  content: string;
+}
+
+export interface KnowledgeSearchResult {
+  id: number;
+  title: string;
+  category: string;
+  snippet: string;
+}
+
+export interface ResearchSource {
+  title?: string | null;
+  url?: string | null;
+}
+
+export interface LegalResearchResult {
+  answer: string;
+  web_sources: ResearchSource[];
+  knowledge_references: KnowledgeDocumentMeta[];
+}

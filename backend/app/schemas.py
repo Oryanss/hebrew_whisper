@@ -206,6 +206,45 @@ class CaseNoteOut(BaseModel):
     case_id: int
 
 
+# --- Knowledge library ---
+class KnowledgeDocumentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    title: str
+    category: str
+    source_filename: Optional[str] = None
+    uploaded_by: Optional[str] = None
+    created_at: datetime
+
+
+class KnowledgeDocumentDetail(KnowledgeDocumentOut):
+    content: str
+
+
+class KnowledgeSearchResult(BaseModel):
+    id: int
+    title: str
+    category: str
+    snippet: str
+
+
+# --- Legal research ---
+class LegalResearchRequest(BaseModel):
+    query: str
+    use_knowledge_library: bool = True
+
+
+class ResearchSource(BaseModel):
+    title: Optional[str] = None
+    url: Optional[str] = None
+
+
+class LegalResearchResult(BaseModel):
+    answer: str
+    web_sources: list[ResearchSource]
+    knowledge_references: list[KnowledgeDocumentOut]
+
+
 # --- Template ---
 class TemplateCreate(BaseModel):
     name: str

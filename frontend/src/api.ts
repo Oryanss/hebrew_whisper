@@ -98,6 +98,10 @@ import type {
   TimeEntry,
   BillingSummary,
   CaseNote,
+  KnowledgeDocumentMeta,
+  KnowledgeDocumentDetail,
+  KnowledgeSearchResult,
+  LegalResearchResult,
 } from "./types";
 
 export const api = {
@@ -171,6 +175,28 @@ export const api = {
   },
   downloadDocumentDocx: (documentId: number, title: string) =>
     downloadFile(`/api/documents/${documentId}/export.docx`, `${title}.docx`),
+
+  listKnowledgeDocuments: (category?: string) =>
+    request<KnowledgeDocumentMeta[]>(`/api/knowledge${category ? `?category=${category}` : ""}`),
+  searchKnowledgeDocuments: (q: string) =>
+    request<KnowledgeSearchResult[]>(`/api/knowledge/search?q=${encodeURIComponent(q)}`),
+  getKnowledgeDocument: (id: number) =>
+    request<KnowledgeDocumentDetail>(`/api/knowledge/${id}`),
+  uploadKnowledgeDocument: (title: string, category: string, file: File) => {
+    const formData = new FormData();
+    formData.append("title", title);
+    formData.append("category", category);
+    formData.append("file", file);
+    return request<KnowledgeDocumentMeta>("/api/knowledge/upload", { method: "POST", formData });
+  },
+  deleteKnowledgeDocument: (id: number) =>
+    request<void>(`/api/knowledge/${id}`, { method: "DELETE" }),
+
+  runLegalResearch: (query: string, useKnowledgeLibrary = true) =>
+    request<LegalResearchResult>("/api/legal-research", {
+      method: "POST",
+      body: { query, use_knowledge_library: useKnowledgeLibrary },
+    }),
 };
 
 export { request };

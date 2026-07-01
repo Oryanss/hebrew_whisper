@@ -376,3 +376,68 @@ def test_upload_and_export_docx(client, auth_headers):
         == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
     assert len(exported.content) > 0
+
+
+def test_knowledge_library_upload_search_and_delete(client, auth_headers):
+    txt_upload = client.post(
+        "/api/knowledge/upload",
+        data={"title": "מאמר על התיישנות", "category": "article"},
+        files={"file": ("article.txt", "דיון מקיף בסוגיית ההתיישנות בדין הישראלי".encode("utf-8"), "text/plain")},
+        headers=auth_headers,
+    )
+    assert txt_upload.status_code == 201
+    doc_id = txt_upload.json()["id"]
+    assert "content" not in txt_upload.json()  # list/create responses omit full content
+
+    docx_bytes = _make_docx_bytes(["פסק דין לדוגמה", "נקבע כי יש לדחות את הערעור"])
+    docx_upload = client.post(
+        "/api/knowledge/upload",
+        data={"title": "פסק דין לדוגמה", "category": "case_law"},
+        files={
+            "file": (
+                "example.docx",
+                docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+        headers=auth_headers,
+    )
+    assert docx_upload.status_code == 201
+
+    unsupported = client.post(
+        "/api/knowledge/upload",
+        data={"title": "קובץ לא נתמך", "category": "other"},
+        files={"file": ("image.png", b"\x89PNG", "image/png")},
+        headers=auth_headers,
+    )
+    assert unsupported.status_code == 400
+
+    listed = client.get("/api/knowledge", headers=auth_headers)
+    assert listed.status_code == 200
+    assert len(listed.json()) >= 2
+
+    filtered = client.get("/api/knowledge?category=case_law", headers=auth_headers)
+    assert all(d["category"] == "case_law" for d in filtered.json())
+
+    searched = client.get("/api/knowledge/search?q=התיישנות", headers=auth_headers)
+    assert searched.status_code == 200
+    assert any("התיישנות" in r["snippet"] for r in searched.json())
+
+    detail = client.get(f"/api/knowledge/{doc_id}", headers=auth_headers)
+    assert detail.status_code == 200
+    assert "content" in detail.json()
+
+    deleted = client.delete(f"/api/knowledge/{doc_id}", headers=auth_headers)
+    assert deleted.status_code == 204
+    missing = client.get(f"/api/knowledge/{doc_id}", headers=auth_headers)
+    assert missing.status_code == 404
+
+
+def test_legal_research_without_api_key_returns_503(client, auth_headers):
+    resp = client.post(
+        "/api/legal-research",
+        json={"query": "מהי ההלכה לגבי התיישנות בתביעת חוב?"},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 503
+    assert "ANTHROPIC_API_KEY" in resp.json()["detail"]

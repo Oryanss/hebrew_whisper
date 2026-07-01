@@ -1,4 +1,4 @@
-import { LayoutDashboard, LogOut, Scale, Users } from "lucide-react";
+import { LayoutDashboard, LogOut, Scale, Search, Users } from "lucide-react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useAccentColor } from "../theme";
@@ -22,6 +22,9 @@ export default function Layout() {
           </Link>
           <Link to="/clients">
             <Users size={16} /> לקוחות
+          </Link>
+          <Link to="/research">
+            <Search size={16} /> מחקר וספריית ידע
           </Link>
         </nav>
         <div className="user-box">
