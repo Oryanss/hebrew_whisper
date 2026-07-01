@@ -102,6 +102,7 @@ import type {
   KnowledgeDocumentDetail,
   KnowledgeSearchResult,
   LegalResearchResult,
+  RiskAssessment,
 } from "./types";
 
 export const api = {
@@ -197,6 +198,16 @@ export const api = {
       method: "POST",
       body: { query, use_knowledge_library: useKnowledgeLibrary },
     }),
+
+  listRiskAssessments: (caseId: number) =>
+    request<RiskAssessment[]>(`/api/cases/${caseId}/risk-assessments`),
+  createRiskAssessment: (caseId: number, data: object) =>
+    request<RiskAssessment>(`/api/cases/${caseId}/risk-assessments`, {
+      method: "POST",
+      body: data,
+    }),
+  deleteRiskAssessment: (id: number) =>
+    request<void>(`/api/risk-assessments/${id}`, { method: "DELETE" }),
 };
 
 export { request };

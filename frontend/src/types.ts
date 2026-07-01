@@ -162,3 +162,30 @@ export interface LegalResearchResult {
   web_sources: ResearchSource[];
   knowledge_references: KnowledgeDocumentMeta[];
 }
+
+export type RiskCategory =
+  | "contract"
+  | "regulatory"
+  | "litigation"
+  | "ip"
+  | "data_privacy"
+  | "employment"
+  | "corporate"
+  | "other";
+
+export type RiskLevel = "green" | "yellow" | "orange" | "red";
+
+export interface RiskAssessment {
+  id: number;
+  category: RiskCategory;
+  description: string;
+  severity: number;
+  likelihood: number;
+  risk_score: number;
+  risk_level: RiskLevel;
+  recommended_action: string;
+  mitigating_factors?: string | null;
+  assessed_by?: string | null;
+  created_at: string;
+  case_id: number;
+}

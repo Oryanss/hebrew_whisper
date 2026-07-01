@@ -1,6 +1,15 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
-import { BookOpen, Clock3, FileText, Info, PenLine, Receipt, ShieldCheck } from "lucide-react";
+import {
+  AlertTriangle,
+  BookOpen,
+  Clock3,
+  FileText,
+  Info,
+  PenLine,
+  Receipt,
+  ShieldCheck,
+} from "lucide-react";
 import { api, ApiError } from "../api";
 import type {
   Authority,
@@ -11,6 +20,7 @@ import type {
   Client,
   Deadline,
   LegalDocument,
+  RiskAssessment,
   Template,
   TimeEntry,
 } from "../types";
@@ -19,6 +29,40 @@ const DEADLINE_STATUS_LABEL: Record<string, string> = {
   pending: "פתוח",
   completed: "בוצע",
   missed: "הוחמץ",
+};
+
+const RISK_CATEGORY_LABEL: Record<string, string> = {
+  contract: "חוזים",
+  regulatory: "רגולציה",
+  litigation: "ליטיגציה",
+  ip: "קניין רוחני",
+  data_privacy: "פרטיות מידע",
+  employment: "דיני עבודה",
+  corporate: "דיני חברות",
+  other: "אחר",
+};
+
+const RISK_LEVEL_LABEL: Record<string, string> = {
+  green: "נמוך",
+  yellow: "בינוני",
+  orange: "גבוה",
+  red: "קריטי",
+};
+
+const SEVERITY_LABEL: Record<number, string> = {
+  1: "1 - זניח",
+  2: "2 - נמוך",
+  3: "3 - בינוני",
+  4: "4 - גבוה",
+  5: "5 - קריטי",
+};
+
+const LIKELIHOOD_LABEL: Record<number, string> = {
+  1: "1 - רחוק",
+  2: "2 - לא סביר",
+  3: "3 - אפשרי",
+  4: "4 - סביר",
+  5: "5 - כמעט ודאי",
 };
 
 export default function CaseDetailPage() {
@@ -34,6 +78,7 @@ export default function CaseDetailPage() {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
   const [caseNotes, setCaseNotes] = useState<CaseNote[]>([]);
+  const [riskAssessments, setRiskAssessments] = useState<RiskAssessment[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<LegalDocument | null>(null);
   const [audit, setAudit] = useState<CitationAuditResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -46,16 +91,18 @@ export default function CaseDetailPage() {
       .getCase(id)
       .then(async (c) => {
         setCaseData(c);
-        const [clients, docs, tpls, auths, dls, entries, summary, caseNoteList] = await Promise.all([
-          api.listClients(),
-          api.listCaseDocuments(id),
-          api.listTemplates(),
-          api.listAuthorities(id),
-          api.listCaseDeadlines(id),
-          api.listTimeEntries(id),
-          api.getBillingSummary(id),
-          api.listCaseNotes(id),
-        ]);
+        const [clients, docs, tpls, auths, dls, entries, summary, caseNoteList, risks] =
+          await Promise.all([
+            api.listClients(),
+            api.listCaseDocuments(id),
+            api.listTemplates(),
+            api.listAuthorities(id),
+            api.listCaseDeadlines(id),
+            api.listTimeEntries(id),
+            api.getBillingSummary(id),
+            api.listCaseNotes(id),
+            api.listRiskAssessments(id),
+          ]);
         setClient(clients.find((cl) => cl.id === c.client_id) ?? null);
         setDocuments(docs);
         setTemplates(tpls);
@@ -64,6 +111,7 @@ export default function CaseDetailPage() {
         setTimeEntries(entries);
         setBillingSummary(summary);
         setCaseNotes(caseNoteList);
+        setRiskAssessments(risks);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "שגיאה בטעינת התיק"));
   }
@@ -274,6 +322,36 @@ export default function CaseDetailPage() {
     }
   }
 
+  async function handleAddRiskAssessment(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
+    setError(null);
+    try {
+      const assessment = await api.createRiskAssessment(id, {
+        category: form.get("category"),
+        description: form.get("description"),
+        severity: Number(form.get("severity")),
+        likelihood: Number(form.get("likelihood")),
+        mitigating_factors: form.get("mitigating_factors") || null,
+      });
+      setRiskAssessments((prev) => [assessment, ...prev]);
+      formEl.reset();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "שגיאה בהוספת הערכת סיכון");
+    }
+  }
+
+  async function handleDeleteRiskAssessment(assessmentId: number) {
+    setError(null);
+    try {
+      await api.deleteRiskAssessment(assessmentId);
+      setRiskAssessments((prev) => prev.filter((r) => r.id !== assessmentId));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "שגיאה במחיקת הערכת סיכון");
+    }
+  }
+
   if (!caseData) {
     return <p>{error ?? "טוען..."}</p>;
   }
@@ -299,6 +377,86 @@ export default function CaseDetailPage() {
           <strong> ערכאה:</strong> {caseData.court ?? "-"}
         </p>
         {caseData.description && <p>{caseData.description}</p>}
+      </section>
+
+      <section className="card">
+        <h2>
+          <AlertTriangle size={16} /> הערכת סיכונים משפטיים
+        </h2>
+        <p className="muted small">
+          מטריצת חומרה × סבירות (1-5 כל אחד). זהו כלי עזר להערכה ראשונית - הסיווג
+          וההמלצה אינם תחליף לשיקול דעת מקצועי.
+        </p>
+        <form onSubmit={handleAddRiskAssessment} className="form-card">
+          <div className="form-grid">
+            <label>
+              קטגוריה
+              <select name="category" defaultValue="other">
+                {Object.entries(RISK_CATEGORY_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              תיאור הסיכון
+              <input name="description" required placeholder="תיאור קצר של הסיכון..." />
+            </label>
+            <label>
+              חומרה (השפעה אם יתממש)
+              <select name="severity" defaultValue="3">
+                {Object.entries(SEVERITY_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              סבירות (הסתברות להתממשות)
+              <select name="likelihood" defaultValue="3">
+                {Object.entries(LIKELIHOOD_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label>
+            גורמים ממתנים (אופציונלי)
+            <input name="mitigating_factors" placeholder="ביטוח, הסכם קיזוז, וכו'..." />
+          </label>
+          <button type="submit">הוספת הערכת סיכון</button>
+        </form>
+        {riskAssessments.length === 0 ? (
+          <p className="muted small">אין עדיין הערכות סיכון בתיק זה.</p>
+        ) : (
+          <ul className="doc-list">
+            {riskAssessments.map((r) => (
+              <li key={r.id}>
+                <div>
+                  <span className={`status-pill risk-${r.risk_level}`}>
+                    {RISK_LEVEL_LABEL[r.risk_level]} ({r.risk_score})
+                  </span>{" "}
+                  <strong>{RISK_CATEGORY_LABEL[r.category] ?? r.category}</strong> -{" "}
+                  {r.description}
+                </div>
+                <div className="muted small">{r.recommended_action}</div>
+                {r.mitigating_factors && (
+                  <div className="muted small">גורמים ממתנים: {r.mitigating_factors}</div>
+                )}
+                <button
+                  className="link-button"
+                  onClick={() => handleDeleteRiskAssessment(r.id)}
+                >
+                  מחיקה
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="card">

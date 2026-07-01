@@ -441,3 +441,68 @@ def test_legal_research_without_api_key_returns_503(client, auth_headers):
     )
     assert resp.status_code == 503
     assert "ANTHROPIC_API_KEY" in resp.json()["detail"]
+
+
+def test_risk_assessment_scoring_and_lifecycle(client, auth_headers):
+    client_resp = client.post(
+        "/api/clients", json={"full_name": "לקוח להערכת סיכון"}, headers=auth_headers
+    )
+    client_id = client_resp.json()["id"]
+    case_resp = client.post(
+        "/api/cases",
+        json={"case_number": "T-RISK-1", "title": "תיק הערכת סיכון", "client_id": client_id},
+        headers=auth_headers,
+    )
+    case_id = case_resp.json()["id"]
+
+    low = client.post(
+        f"/api/cases/{case_id}/risk-assessments",
+        json={
+            "category": "contract",
+            "description": "סטייה קלה מנוסח סטנדרטי בחוזה ספק",
+            "severity": 1,
+            "likelihood": 2,
+        },
+        headers=auth_headers,
+    )
+    assert low.status_code == 201
+    low_body = low.json()
+    assert low_body["risk_score"] == 2
+    assert low_body["risk_level"] == "green"
+    assert low_body["assessed_by"]
+
+    critical = client.post(
+        f"/api/cases/{case_id}/risk-assessments",
+        json={
+            "category": "litigation",
+            "description": "תביעה פעילה עם חשיפה כספית משמעותית",
+            "severity": 5,
+            "likelihood": 4,
+        },
+        headers=auth_headers,
+    )
+    assert critical.status_code == 201
+    critical_body = critical.json()
+    assert critical_body["risk_score"] == 20
+    assert critical_body["risk_level"] == "red"
+    assert "הסלמה מיידית" in critical_body["recommended_action"]
+
+    listed = client.get(f"/api/cases/{case_id}/risk-assessments", headers=auth_headers)
+    assert listed.status_code == 200
+    assert len(listed.json()) == 2
+    # newest first
+    assert listed.json()[0]["id"] == critical_body["id"]
+
+    invalid = client.post(
+        f"/api/cases/{case_id}/risk-assessments",
+        json={"description": "ציון לא חוקי", "severity": 6, "likelihood": 3},
+        headers=auth_headers,
+    )
+    assert invalid.status_code == 422
+
+    deleted = client.delete(
+        f"/api/risk-assessments/{low_body['id']}", headers=auth_headers
+    )
+    assert deleted.status_code == 204
+    listed_after = client.get(f"/api/cases/{case_id}/risk-assessments", headers=auth_headers)
+    assert len(listed_after.json()) == 1

@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, Field
 
-from .models import UserRole, CaseStatus, DocumentStatus, AuthoritySourceDb, DeadlineStatus
+from .models import UserRole, CaseStatus, DocumentStatus, AuthoritySourceDb, DeadlineStatus, RiskCategory
 
 
 # --- Auth ---
@@ -243,6 +243,30 @@ class LegalResearchResult(BaseModel):
     answer: str
     web_sources: list[ResearchSource]
     knowledge_references: list[KnowledgeDocumentOut]
+
+
+# --- Risk assessment ---
+class RiskAssessmentCreate(BaseModel):
+    category: RiskCategory = RiskCategory.OTHER
+    description: str
+    severity: int = Field(ge=1, le=5)
+    likelihood: int = Field(ge=1, le=5)
+    mitigating_factors: Optional[str] = None
+
+
+class RiskAssessmentOut(BaseModel):
+    id: int
+    category: RiskCategory
+    description: str
+    severity: int
+    likelihood: int
+    risk_score: int
+    risk_level: str
+    recommended_action: str
+    mitigating_factors: Optional[str] = None
+    assessed_by: Optional[str] = None
+    created_at: datetime
+    case_id: int
 
 
 # --- Template ---

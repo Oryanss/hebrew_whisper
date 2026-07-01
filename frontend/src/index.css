@@ -295,6 +295,35 @@ button:disabled {
   color: var(--danger);
 }
 
+.risk-green {
+  background: #e2f0e5;
+  color: var(--success);
+}
+
+.risk-yellow {
+  background: #fdf2e3;
+  color: #8a6d1f;
+}
+
+.risk-orange {
+  background: #fbe4d0;
+  color: #b5540f;
+}
+
+.risk-red {
+  background: #fbe0de;
+  color: #a4342a;
+  font-weight: 800;
+}
+
+.risk-matrix-cell {
+  padding: 0.4rem 0.6rem;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 4px;
+}
+
 .error-text {
   color: var(--danger);
   background: #fbeceb;

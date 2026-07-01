@@ -90,6 +90,9 @@ class Case(Base):
     notes = relationship(
         "CaseNote", back_populates="case", cascade="all, delete-orphan", order_by="CaseNote.created_at"
     )
+    risk_assessments = relationship(
+        "RiskAssessment", back_populates="case", cascade="all, delete-orphan"
+    )
 
 
 class Template(Base):
@@ -219,3 +222,34 @@ class KnowledgeDocument(Base):
     source_filename = Column(String, nullable=True)
     uploaded_by = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class RiskCategory(str, enum.Enum):
+    CONTRACT = "contract"
+    REGULATORY = "regulatory"
+    LITIGATION = "litigation"
+    IP = "ip"
+    DATA_PRIVACY = "data_privacy"
+    EMPLOYMENT = "employment"
+    CORPORATE = "corporate"
+    OTHER = "other"
+
+
+class RiskAssessment(Base):
+    """A severity x likelihood legal risk assessment for a case. The score
+    and escalation guidance are derived (not stored) from severity/likelihood
+    by app.risk_scoring, so the banding logic lives in one place."""
+
+    __tablename__ = "risk_assessments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    category = Column(Enum(RiskCategory), default=RiskCategory.OTHER, nullable=False)
+    description = Column(Text, nullable=False)
+    severity = Column(Integer, nullable=False)  # 1 (negligible) - 5 (critical)
+    likelihood = Column(Integer, nullable=False)  # 1 (remote) - 5 (almost certain)
+    mitigating_factors = Column(Text, nullable=True)
+    assessed_by = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
+    case = relationship("Case", back_populates="risk_assessments")
