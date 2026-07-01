@@ -6,6 +6,9 @@
   --border: #d8d3c8;
   --danger: #a4342a;
   --success: #2f6b3f;
+  --shadow-sm: 0 1px 2px rgba(35, 48, 58, 0.06);
+  --shadow-md: 0 4px 14px rgba(35, 48, 58, 0.08);
+  --heading-font: "Frank Ruhl Libre", "David", serif;
   font-family: "Assistant", "Heebo", ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -18,6 +21,31 @@ body {
   background: var(--bg);
   color: var(--ink);
   direction: rtl;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--heading-font);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+h1 {
+  font-size: 1.6rem;
+  margin: 0;
+}
+
+h2 {
+  font-size: 1.2rem;
+  margin: 0 0 0.75rem;
+}
+
+h2 svg,
+h1 svg {
+  color: var(--accent);
+  flex-shrink: 0;
 }
 
 .app-shell {
@@ -33,18 +61,36 @@ body {
   padding: 0.75rem 1.5rem;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 
 .brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--heading-font);
   font-weight: 700;
   font-size: 1.1rem;
+  color: var(--ink);
+}
+
+.brand svg {
+  color: var(--accent);
+}
+
+.topbar nav {
+  display: flex;
+  gap: 1.25rem;
 }
 
 .topbar nav a {
-  margin-inline-end: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
   color: var(--ink);
   text-decoration: none;
   font-weight: 600;
+  transition: color 0.15s ease;
 }
 
 .topbar nav a:hover {
@@ -54,7 +100,7 @@ body {
 .user-box {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .disclaimer-banner {
@@ -84,9 +130,11 @@ body {
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 1.25rem;
   margin-bottom: 1.25rem;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s ease;
 }
 
 .two-col {
@@ -121,27 +169,41 @@ select,
 textarea {
   font-family: inherit;
   font-size: 0.95rem;
-  padding: 0.5rem 0.6rem;
+  padding: 0.55rem 0.7rem;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 7px;
   font-weight: 400;
   background: var(--surface);
   color: var(--ink);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 button {
   background: var(--ink);
   color: white;
   border: none;
-  border-radius: 6px;
-  padding: 0.55rem 1rem;
+  border-radius: 7px;
+  padding: 0.55rem 1.1rem;
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s ease, transform 0.05s ease;
 }
 
 button:hover {
   background: var(--accent);
+}
+
+button:active {
+  transform: translateY(1px);
 }
 
 button:disabled {
@@ -155,6 +217,9 @@ button:disabled {
   padding: 0;
   font-weight: 600;
   text-decoration: underline;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .link-button:hover {
@@ -167,8 +232,9 @@ button:disabled {
   border-collapse: collapse;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .data-table th,
@@ -176,6 +242,14 @@ button:disabled {
   padding: 0.65rem 0.9rem;
   text-align: right;
   border-bottom: 1px solid var(--border);
+}
+
+.data-table tbody tr {
+  transition: background 0.1s ease;
+}
+
+.data-table tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
 .data-table th {
@@ -291,18 +365,36 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: center;
+  background: radial-gradient(
+    circle at 50% 0%,
+    color-mix(in srgb, var(--accent) 10%, var(--bg)) 0%,
+    var(--bg) 60%
+  );
 }
 
 .auth-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 2rem;
   width: 100%;
   max-width: 380px;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  box-shadow: var(--shadow-md);
+}
+
+.auth-logo {
+  display: flex;
+  justify-content: center;
+  color: var(--accent);
+  margin-bottom: 0.25rem;
+}
+
+.auth-card h1 {
+  justify-content: center;
+  text-align: center;
 }
 
 .auth-card label {
@@ -315,4 +407,51 @@ button:disabled {
 .center-loading {
   text-align: center;
   margin-top: 3rem;
+}
+
+/* Accent color picker */
+.accent-picker {
+  position: relative;
+}
+
+.accent-picker-toggle {
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+}
+
+.accent-picker-toggle:hover {
+  color: var(--accent);
+}
+
+.accent-picker-popover {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem;
+  display: flex;
+  gap: 0.4rem;
+  box-shadow: var(--shadow-md);
+  z-index: 20;
+}
+
+.accent-swatch {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.accent-swatch-check {
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
 }

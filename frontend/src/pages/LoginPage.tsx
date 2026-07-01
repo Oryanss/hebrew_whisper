@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { Scale } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError } from "../api";
 
@@ -33,6 +34,9 @@ export default function LoginPage() {
   return (
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
+        <div className="auth-logo">
+          <Scale size={28} />
+        </div>
         <h1>{mode === "login" ? "התחברות" : "הרשמת עורך דין חדש"}</h1>
         {mode === "register" && (
           <label>

@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { Users } from "lucide-react";
 import { api, ApiError } from "../api";
 import type { Client } from "../types";
 
@@ -41,7 +42,7 @@ export default function ClientsPage() {
   return (
     <div>
       <div className="page-header">
-        <h1>לקוחות</h1>
+        <h1><Users size={20} /> לקוחות</h1>
         <button onClick={() => setShowForm((v) => !v)}>{showForm ? "ביטול" : "לקוח חדש"}</button>
       </div>
 

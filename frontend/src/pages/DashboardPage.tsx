@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { Clock3, FolderKanban } from "lucide-react";
 import { api, ApiError } from "../api";
 import type { Case, Client, DeadlineWithCase } from "../types";
 
@@ -57,7 +58,7 @@ export default function DashboardPage() {
   return (
     <div>
       <div className="page-header">
-        <h1>לוח תיקים</h1>
+        <h1><FolderKanban size={20} /> לוח תיקים</h1>
         <button onClick={() => setShowForm((v) => !v)}>{showForm ? "ביטול" : "תיק חדש"}</button>
       </div>
 
@@ -65,7 +66,7 @@ export default function DashboardPage() {
 
       {!loading && upcomingDeadlines.length > 0 && (
         <section className="card">
-          <h2>מועדים קרובים (14 יום)</h2>
+          <h2><Clock3 size={16} /> מועדים קרובים (14 יום)</h2>
           <ul className="doc-list">
             {upcomingDeadlines.map((d) => (
               <li key={d.id}>

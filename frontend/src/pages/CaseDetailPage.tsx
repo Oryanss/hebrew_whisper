@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
+import { BookOpen, Clock3, FileText, Info, PenLine, Receipt, ShieldCheck } from "lucide-react";
 import { api, ApiError } from "../api";
 import type {
   Authority,
@@ -288,7 +289,7 @@ export default function CaseDetailPage() {
       {error && <div className="error-text">{error}</div>}
 
       <section className="card">
-        <h2>פרטי התיק</h2>
+        <h2><Info size={16} /> פרטי התיק</h2>
         <p>
           <strong>לקוח:</strong> {client?.full_name ?? "-"}
         </p>
@@ -301,7 +302,7 @@ export default function CaseDetailPage() {
       </section>
 
       <section className="card">
-        <h2>יומן תיק</h2>
+        <h2><BookOpen size={16} /> יומן תיק</h2>
         <p className="muted small">
           רשומות חופשיות לפי סדר כרונולוגי - התפתחויות, שיחות, החלטות אסטרטגיות.
         </p>
@@ -333,7 +334,7 @@ export default function CaseDetailPage() {
       </section>
 
       <section className="card">
-        <h2>מועדים ודדליינים</h2>
+        <h2><Clock3 size={16} /> מועדים ודדליינים</h2>
         <p className="muted small">
           המערכת אינה מחשבת אוטומטית מועדים סטטוטוריים - יש להזין תאריך יעד לאחר בדיקה מול
           התקנות/הדין הרלוונטי.
@@ -403,7 +404,7 @@ export default function CaseDetailPage() {
       </section>
 
       <section className="card">
-        <h2>חיוב שעות</h2>
+        <h2><Receipt size={16} /> חיוב שעות</h2>
         {billingSummary && (
           <p className="muted small">
             סה"כ {billingSummary.total_hours} שעות, מתוכן {billingSummary.billable_hours} שעות
@@ -481,7 +482,7 @@ export default function CaseDetailPage() {
 
       <div className="two-col">
         <section className="card">
-          <h2>עוזר ניסוח מסמכים</h2>
+          <h2><PenLine size={16} /> עוזר ניסוח מסמכים</h2>
           <form onSubmit={handleDraft} className="form-card">
             <label>
               תבנית (אופציונלי)
@@ -545,7 +546,7 @@ export default function CaseDetailPage() {
         </section>
 
         <section className="card">
-          <h2>בנק אסמכתאות מאומתות</h2>
+          <h2><ShieldCheck size={16} /> בנק אסמכתאות מאומתות</h2>
           <p className="muted small">
             רק אסמכתאות שנוספו כאן ואומתו ידנית מול מקור מהימן ישמשו את עוזר הניסוח.
           </p>
@@ -602,7 +603,7 @@ export default function CaseDetailPage() {
       {selectedDoc && (
         <section className="card">
           <div className="page-header">
-            <h2>{selectedDoc.title}</h2>
+            <h2><FileText size={16} /> {selectedDoc.title}</h2>
             <div>
               <button onClick={handleAudit}>בדיקת אסמכתאות במסמך</button>{" "}
               <button onClick={handleSaveDoc} disabled={savingDoc}>
