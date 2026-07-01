@@ -313,3 +313,106 @@ def test_case_notes_missing_case_404s(client, auth_headers):
         "/api/cases/999999/notes", json={"content": "x"}, headers=auth_headers
     )
     assert resp.status_code == 404
+
+
+def test_invoice_generation_lifecycle(client, auth_headers):
+    client_resp = client.post(
+        "/api/clients", json={"full_name": "לקוח לחשבונית"}, headers=auth_headers
+    )
+    client_id = client_resp.json()["id"]
+    case_resp = client.post(
+        "/api/cases",
+        json={"case_number": "T-INVOICE-1", "title": "תיק חשבוניות", "client_id": client_id},
+        headers=auth_headers,
+    )
+    case_id = case_resp.json()["id"]
+
+    billed_entry = client.post(
+        f"/api/cases/{case_id}/time-entries",
+        json={
+            "description": "ניסוח כתב תביעה",
+            "entry_date": "2026-06-01T09:00:00",
+            "hours": 3,
+            "hourly_rate": 500,
+            "billable": True,
+        },
+        headers=auth_headers,
+    ).json()
+
+    client.post(
+        f"/api/cases/{case_id}/time-entries",
+        json={
+            "description": "רישום ללא תעריף - לא ייכלל",
+            "entry_date": "2026-06-02T09:00:00",
+            "hours": 1,
+            "billable": True,
+        },
+        headers=auth_headers,
+    )
+    client.post(
+        f"/api/cases/{case_id}/time-entries",
+        json={
+            "description": "לא לחיוב - לא ייכלל",
+            "entry_date": "2026-06-03T09:00:00",
+            "hours": 2,
+            "hourly_rate": 500,
+            "billable": False,
+        },
+        headers=auth_headers,
+    )
+
+    no_invoiceable_case = client.post(
+        "/api/cases",
+        json={"case_number": "T-INVOICE-EMPTY", "title": "תיק ריק", "client_id": client_id},
+        headers=auth_headers,
+    ).json()
+    empty_resp = client.post(
+        f"/api/cases/{no_invoiceable_case['id']}/invoices", json={}, headers=auth_headers
+    )
+    assert empty_resp.status_code == 400
+
+    created = client.post(f"/api/cases/{case_id}/invoices", json={}, headers=auth_headers)
+    assert created.status_code == 201
+    invoice = created.json()
+    assert invoice["total_amount"] == 1500
+    assert invoice["status"] == "draft"
+    assert invoice["invoice_number"] == "T-INVOICE-1-INV-1"
+
+    entries_after = client.get(
+        f"/api/cases/{case_id}/time-entries", headers=auth_headers
+    ).json()
+    invoiced_ids = {e["id"] for e in entries_after if e["invoice_id"] == invoice["id"]}
+    assert invoiced_ids == {billed_entry["id"]}
+
+    # a second invoice with no newly-billable entries should 400
+    second_attempt = client.post(f"/api/cases/{case_id}/invoices", json={}, headers=auth_headers)
+    assert second_attempt.status_code == 400
+
+    listed = client.get(f"/api/cases/{case_id}/invoices", headers=auth_headers)
+    assert listed.status_code == 200
+    assert len(listed.json()) == 1
+
+    detail = client.get(f"/api/invoices/{invoice['id']}", headers=auth_headers)
+    assert detail.status_code == 200
+    assert len(detail.json()["time_entries"]) == 1
+
+    updated = client.patch(
+        f"/api/invoices/{invoice['id']}", json={"status": "paid"}, headers=auth_headers
+    )
+    assert updated.status_code == 200
+    assert updated.json()["status"] == "paid"
+
+    deleted = client.delete(f"/api/invoices/{invoice['id']}", headers=auth_headers)
+    assert deleted.status_code == 204
+
+    entries_after_delete = client.get(
+        f"/api/cases/{case_id}/time-entries", headers=auth_headers
+    ).json()
+    assert all(e["invoice_id"] is None for e in entries_after_delete)
+
+
+def test_invoices_missing_case_404s(client, auth_headers):
+    resp = client.get("/api/cases/999999/invoices", headers=auth_headers)
+    assert resp.status_code == 404
+    resp = client.post("/api/cases/999999/invoices", json={}, headers=auth_headers)
+    assert resp.status_code == 404

@@ -92,11 +92,12 @@ curls the frontend). Keep changes compatible with all three.
   the standard FastAPI dependency; nearly every router is mounted with
   `dependencies=[Depends(security.get_current_user)]` at the `APIRouter` level rather than
   per-route.
-- `app/routers/` — one module per resource. Several resources (deadlines, billing, notes) expose
-  **two routers**: a nested one (`/api/cases/{case_id}/<resource>`) for case-scoped list/create,
-  and a `standalone_router` (`/api/<resource>/{id}`) for update/delete/cross-case queries (e.g.
-  `deadlines.standalone_router` also serves `/api/deadlines/upcoming`). Both routers from a module
-  get registered in `main.py`. Follow this split when adding a new case-scoped resource.
+- `app/routers/` — one module per resource. Several resources (deadlines, billing, invoices,
+  notes) expose **two routers**: a nested one (`/api/cases/{case_id}/<resource>`) for case-scoped
+  list/create, and a `standalone_router` (`/api/<resource>/{id}`) for update/delete/cross-case
+  queries (e.g. `deadlines.standalone_router` also serves `/api/deadlines/upcoming`). Both routers
+  from a module get registered in `main.py`. Follow this split when adding a new case-scoped
+  resource.
 - `app/llm/` — `client.py` wraps the Anthropic SDK call (`generate_draft`, raising
   `LLMNotConfiguredError` if `ANTHROPIC_API_KEY` is unset so the router can return a clean 503);
   `prompts.py` holds `SYSTEM_PROMPT` and `build_user_prompt`, which assembles case/template/
@@ -110,9 +111,9 @@ curls the frontend). Keep changes compatible with all three.
 
 ### Core data model and how it connects
 
-`Client` → `Case` (1:many) → `Document`, `Authority`, `Deadline`, `TimeEntry`, `CaseNote` (each
-1:many, cascade-delete with the case). `Template` is independent and optionally linked from a
-`Document` via `template_id`. Key fields worth knowing:
+`Client` → `Case` (1:many) → `Document`, `Authority`, `Deadline`, `TimeEntry`, `Invoice`,
+`CaseNote` (each 1:many, cascade-delete with the case). `Template` is independent and optionally
+linked from a `Document` via `template_id`. Key fields worth knowing:
 
 - `Case.practice_area` feeds general legal context into drafting prompts.
 - `Authority.case_id` is nullable — a null `case_id` means a firm-wide authority usable across
@@ -123,6 +124,11 @@ curls the frontend). Keep changes compatible with all three.
   that need legal verification). Don't add auto-calculation without discussing this constraint.
 - `TimeEntry` has `billable` (bool) and optional `hourly_rate`; billing summary logic
   aggregates these per case.
+- `Invoice` (`routers/invoices.py`) is generated from a case's outstanding billable `TimeEntry`
+  rows that have an `hourly_rate` set and no `invoice_id` yet — `POST
+  /api/cases/{case_id}/invoices` snapshots them into a new invoice (400 if none qualify) and
+  stamps each entry's `invoice_id`, so an entry can only ever belong to one invoice. Deleting an
+  invoice clears `invoice_id` back to null on its entries rather than deleting them.
 
 ### Anti-hallucination controls (don't weaken these)
 

@@ -9,6 +9,7 @@ import type {
   CitationAuditResult,
   Client,
   Deadline,
+  Invoice,
   LegalDocument,
   Template,
   TimeEntry,
@@ -18,6 +19,12 @@ const DEADLINE_STATUS_LABEL: Record<string, string> = {
   pending: "פתוח",
   completed: "בוצע",
   missed: "הוחמץ",
+};
+
+const INVOICE_STATUS_LABEL: Record<string, string> = {
+  draft: "טיוטה",
+  sent: "נשלחה",
+  paid: "שולמה",
 };
 
 export default function CaseDetailPage() {
@@ -32,28 +39,32 @@ export default function CaseDetailPage() {
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [caseNotes, setCaseNotes] = useState<CaseNote[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<LegalDocument | null>(null);
   const [audit, setAudit] = useState<CitationAuditResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [drafting, setDrafting] = useState(false);
   const [savingDoc, setSavingDoc] = useState(false);
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
 
   function reload() {
     api
       .getCase(id)
       .then(async (c) => {
         setCaseData(c);
-        const [clients, docs, tpls, auths, dls, entries, summary, caseNoteList] = await Promise.all([
-          api.listClients(),
-          api.listCaseDocuments(id),
-          api.listTemplates(),
-          api.listAuthorities(id),
-          api.listCaseDeadlines(id),
-          api.listTimeEntries(id),
-          api.getBillingSummary(id),
-          api.listCaseNotes(id),
-        ]);
+        const [clients, docs, tpls, auths, dls, entries, summary, caseNoteList, invoiceList] =
+          await Promise.all([
+            api.listClients(),
+            api.listCaseDocuments(id),
+            api.listTemplates(),
+            api.listAuthorities(id),
+            api.listCaseDeadlines(id),
+            api.listTimeEntries(id),
+            api.getBillingSummary(id),
+            api.listCaseNotes(id),
+            api.listCaseInvoices(id),
+          ]);
         setClient(clients.find((cl) => cl.id === c.client_id) ?? null);
         setDocuments(docs);
         setTemplates(tpls);
@@ -62,6 +73,7 @@ export default function CaseDetailPage() {
         setTimeEntries(entries);
         setBillingSummary(summary);
         setCaseNotes(caseNoteList);
+        setInvoices(invoiceList);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "שגיאה בטעינת התיק"));
   }
@@ -209,6 +221,43 @@ export default function CaseDetailPage() {
       await reloadBillingSummary();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "שגיאה במחיקת רישום שעות");
+    }
+  }
+
+  async function handleGenerateInvoice() {
+    setError(null);
+    setGeneratingInvoice(true);
+    try {
+      const invoice = await api.createInvoice(id);
+      setInvoices((prev) => [invoice, ...prev]);
+      const entries = await api.listTimeEntries(id);
+      setTimeEntries(entries);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "שגיאה בהפקת חשבונית");
+    } finally {
+      setGeneratingInvoice(false);
+    }
+  }
+
+  async function handleInvoiceStatusChange(invoiceId: number, status: string) {
+    setError(null);
+    try {
+      const updated = await api.updateInvoice(invoiceId, { status });
+      setInvoices((prev) => prev.map((inv) => (inv.id === updated.id ? updated : inv)));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "שגיאה בעדכון חשבונית");
+    }
+  }
+
+  async function handleDeleteInvoice(invoiceId: number) {
+    setError(null);
+    try {
+      await api.deleteInvoice(invoiceId);
+      setInvoices((prev) => prev.filter((inv) => inv.id !== invoiceId));
+      const entries = await api.listTimeEntries(id);
+      setTimeEntries(entries);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "שגיאה במחיקת חשבונית");
     }
   }
 
@@ -416,6 +465,7 @@ export default function CaseDetailPage() {
                 <th>שעות</th>
                 <th>תעריף</th>
                 <th>לחיוב</th>
+                <th>חשבונית</th>
                 <th></th>
               </tr>
             </thead>
@@ -428,10 +478,77 @@ export default function CaseDetailPage() {
                   <td>{entry.hourly_rate != null ? `${entry.hourly_rate} ₪/ש'` : "-"}</td>
                   <td>{entry.billable ? "כן" : "לא"}</td>
                   <td>
+                    {entry.invoice_id
+                      ? invoices.find((inv) => inv.id === entry.invoice_id)?.invoice_number ??
+                        "כלול בחשבונית"
+                      : "-"}
+                  </td>
+                  <td>
                     <button
                       className="link-button"
                       onClick={() => handleDeleteTimeEntry(entry.id)}
                     >
+                      מחיקה
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section className="card">
+        <h2>חשבוניות</h2>
+        <p className="muted small">
+          הפקת חשבונית אוספת את כל רישומי השעות הניתנים לחיוב עם תעריף שעתי שטרם נכללו
+          בחשבונית קודמת בתיק זה.
+        </p>
+        <button onClick={handleGenerateInvoice} disabled={generatingInvoice}>
+          {generatingInvoice ? "מפיק חשבונית..." : "הפקת חשבונית מרישומי שעות שטרם חויבו"}
+        </button>
+        {invoices.length === 0 ? (
+          <p className="muted small">אין עדיין חשבוניות בתיק זה.</p>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>מספר חשבונית</th>
+                <th>תאריך הפקה</th>
+                <th>סכום</th>
+                <th>סטטוס</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {invoices.map((invoice) => (
+                <tr key={invoice.id}>
+                  <td>{invoice.invoice_number}</td>
+                  <td>{new Date(invoice.issue_date).toLocaleDateString("he-IL")}</td>
+                  <td>{invoice.total_amount.toLocaleString()} ₪</td>
+                  <td>
+                    <span className={`status-pill invoice-${invoice.status}`}>
+                      {INVOICE_STATUS_LABEL[invoice.status]}
+                    </span>
+                  </td>
+                  <td>
+                    {invoice.status === "draft" && (
+                      <button
+                        className="link-button"
+                        onClick={() => handleInvoiceStatusChange(invoice.id, "sent")}
+                      >
+                        סמן כנשלחה
+                      </button>
+                    )}{" "}
+                    {invoice.status === "sent" && (
+                      <button
+                        className="link-button"
+                        onClick={() => handleInvoiceStatusChange(invoice.id, "paid")}
+                      >
+                        סמן כשולמה
+                      </button>
+                    )}{" "}
+                    <button className="link-button" onClick={() => handleDeleteInvoice(invoice.id)}>
                       מחיקה
                     </button>
                   </td>
