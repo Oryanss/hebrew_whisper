@@ -1,12 +1,10 @@
 from typing import List
-from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from .. import models, schemas, security
 from ..database import get_db
-from ..docx_utils import build_invoice_docx
 
 router = APIRouter(
     prefix="/api/cases/{case_id}",
@@ -65,32 +63,6 @@ def get_billing_summary(case_id: int, db: Session = Depends(get_db)):
         billable_hours=billable_hours,
         total_billable_amount=total_billable_amount,
         entries_missing_rate=entries_missing_rate,
-    )
-
-
-@router.get("/invoice.docx")
-def export_invoice_docx(case_id: int, db: Session = Depends(get_db)):
-    case = _get_case_or_404(case_id, db)
-    entries = db.query(models.TimeEntry).filter(models.TimeEntry.case_id == case_id).all()
-
-    billable_entries = [e for e in entries if e.billable]
-    missing_rate_count = sum(1 for e in billable_entries if e.hourly_rate is None)
-
-    docx_bytes = build_invoice_docx(case, case.client, entries, missing_rate_count)
-
-    filename = f"חשבונית - {case.title}.docx"
-    ascii_fallback = "".join(c for c in case.title if c.isascii() and (c.isalnum() or c in " -_"))
-    ascii_fallback = ascii_fallback.strip() or "invoice"
-    encoded_filename = quote(filename)
-    return Response(
-        content=docx_bytes,
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={
-            "Content-Disposition": (
-                f'attachment; filename="invoice-{ascii_fallback}.docx"; '
-                f"filename*=UTF-8''{encoded_filename}"
-            )
-        },
     )
 
 

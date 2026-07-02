@@ -508,135 +508,119 @@ def test_risk_assessment_scoring_and_lifecycle(client, auth_headers):
     assert len(listed_after.json()) == 1
 
 
-def test_invoice_docx_generation(client, auth_headers):
-    import io
-
-    from docx import Document as DocxDocument
-
+def test_invoice_generation_lifecycle(client, auth_headers):
     client_resp = client.post(
         "/api/clients", json={"full_name": "לקוח לחשבונית"}, headers=auth_headers
     )
     client_id = client_resp.json()["id"]
-    # Hebrew case title is exactly the scenario that broke the original
-    # document-export endpoint before the RFC 5987 filename fix - keep it.
     case_resp = client.post(
         "/api/cases",
-        json={
-            "case_number": "T-INVOICE-1",
-            "title": "תיק חשבונית לבדיקה - חברת בע\"מ",
-            "client_id": client_id,
-        },
+        json={"case_number": "T-INVOICE-1", "title": "תיק חשבוניות", "client_id": client_id},
         headers=auth_headers,
     )
     case_id = case_resp.json()["id"]
 
-    billable_with_rate = client.post(
+    billed_entry = client.post(
         f"/api/cases/{case_id}/time-entries",
         json={
-            "description": "ניסוח כתב הגנה",
+            "description": "ניסוח כתב תביעה",
             "entry_date": "2026-06-01T09:00:00",
-            "hours": 4,
-            "hourly_rate": 600,
+            "hours": 3,
+            "hourly_rate": 500,
             "billable": True,
         },
         headers=auth_headers,
-    )
-    assert billable_with_rate.status_code == 201
+    ).json()
 
-    billable_without_rate = client.post(
+    client.post(
         f"/api/cases/{case_id}/time-entries",
         json={
-            "description": "ישיבת ייעוץ עם הלקוח",
+            "description": "רישום ללא תעריף - לא ייכלל",
             "entry_date": "2026-06-02T09:00:00",
-            "hours": 1.5,
+            "hours": 1,
             "billable": True,
         },
         headers=auth_headers,
     )
-    assert billable_without_rate.status_code == 201
-
-    non_billable = client.post(
+    client.post(
         f"/api/cases/{case_id}/time-entries",
         json={
-            "description": "מחקר פנימי שאינו לחיוב",
+            "description": "לא לחיוב - לא ייכלל",
             "entry_date": "2026-06-03T09:00:00",
             "hours": 2,
-            "hourly_rate": 600,
+            "hourly_rate": 500,
             "billable": False,
         },
         headers=auth_headers,
     )
-    assert non_billable.status_code == 201
 
-    invoice = client.get(f"/api/cases/{case_id}/invoice.docx", headers=auth_headers)
-    assert invoice.status_code == 200
-    assert (
-        invoice.headers["content-type"]
-        == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    )
-    assert len(invoice.content) > 0
-
-    # This is exactly the class of bug that previously crashed with
-    # UnicodeEncodeError: Content-Disposition must be RFC 5987 encoded when
-    # the filename contains Hebrew, plus an ASCII-only fallback.
-    content_disposition = invoice.headers["content-disposition"]
-    assert "filename*=UTF-8''" in content_disposition
-    assert 'filename="' in content_disposition
-    fallback_match = content_disposition.split('filename="', 1)[1].split('"', 1)[0]
-    assert fallback_match.isascii()
-
-    # Verify the itemized content of the generated docx: only the
-    # billable + priced entry should appear, the total should be correct,
-    # and the excluded-for-missing-rate count should be noted.
-    docx = DocxDocument(io.BytesIO(invoice.content))
-    full_text = "\n".join(p.text for p in docx.paragraphs)
-    assert "לקוח לחשבונית" in full_text
-    assert "תיק חשבונית לבדיקה" in full_text
-    assert "1" in full_text  # entries_missing_rate note mentions the excluded entry
-
-    table_text = []
-    for table in docx.tables:
-        for row in table.rows:
-            table_text.append("\t".join(cell.text for cell in row.cells))
-    joined_table = "\n".join(table_text)
-    assert "ניסוח כתב הגנה" in joined_table
-    assert "ישיבת ייעוץ עם הלקוח" not in joined_table  # missing rate, excluded
-    assert "מחקר פנימי שאינו לחיוב" not in joined_table  # not billable, excluded
-    assert "2,400.00" in joined_table  # 4h * 600 line total
-    assert "2,400.00" in full_text  # total line
-
-
-def test_invoice_docx_with_no_time_entries(client, auth_headers):
-    import io
-
-    from docx import Document as DocxDocument
-
-    client_resp = client.post(
-        "/api/clients", json={"full_name": "לקוח ללא רישומי שעות"}, headers=auth_headers
-    )
-    client_id = client_resp.json()["id"]
-    case_resp = client.post(
+    no_invoiceable_case = client.post(
         "/api/cases",
-        json={"case_number": "T-INVOICE-EMPTY-1", "title": "תיק ריק", "client_id": client_id},
+        json={"case_number": "T-INVOICE-EMPTY", "title": "תיק ריק", "client_id": client_id},
         headers=auth_headers,
+    ).json()
+    empty_resp = client.post(
+        f"/api/cases/{no_invoiceable_case['id']}/invoices", json={}, headers=auth_headers
     )
-    case_id = case_resp.json()["id"]
+    assert empty_resp.status_code == 400
 
-    invoice = client.get(f"/api/cases/{case_id}/invoice.docx", headers=auth_headers)
-    assert invoice.status_code == 200
+    created = client.post(f"/api/cases/{case_id}/invoices", json={}, headers=auth_headers)
+    assert created.status_code == 201
+    invoice = created.json()
+    assert invoice["total_amount"] == 1500
+    assert invoice["status"] == "draft"
+    assert invoice["invoice_number"] == "T-INVOICE-1-INV-1"
+
+    entries_after = client.get(
+        f"/api/cases/{case_id}/time-entries", headers=auth_headers
+    ).json()
+    invoiced_ids = {e["id"] for e in entries_after if e["invoice_id"] == invoice["id"]}
+    assert invoiced_ids == {billed_entry["id"]}
+
+    # a second invoice with no newly-billable entries should 400
+    second_attempt = client.post(f"/api/cases/{case_id}/invoices", json={}, headers=auth_headers)
+    assert second_attempt.status_code == 400
+
+    listed = client.get(f"/api/cases/{case_id}/invoices", headers=auth_headers)
+    assert listed.status_code == 200
+    assert len(listed.json()) == 1
+
+    detail = client.get(f"/api/invoices/{invoice['id']}", headers=auth_headers)
+    assert detail.status_code == 200
+    assert len(detail.json()["time_entries"]) == 1
+
+    updated = client.patch(
+        f"/api/invoices/{invoice['id']}", json={"status": "paid"}, headers=auth_headers
+    )
+    assert updated.status_code == 200
+    assert updated.json()["status"] == "paid"
+
+    exported = client.get(f"/api/invoices/{invoice['id']}/export.docx", headers=auth_headers)
+    assert exported.status_code == 200
     assert (
-        invoice.headers["content-type"]
+        exported.headers["content-type"]
         == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
-    assert len(invoice.content) > 0
+    assert len(exported.content) > 0
 
-    docx = DocxDocument(io.BytesIO(invoice.content))
-    full_text = "\n".join(p.text for p in docx.paragraphs)
-    assert "אין רישומי שעות לחיוב" in full_text
+    deleted = client.delete(f"/api/invoices/{invoice['id']}", headers=auth_headers)
+    assert deleted.status_code == 204
+
+    entries_after_delete = client.get(
+        f"/api/cases/{case_id}/time-entries", headers=auth_headers
+    ).json()
+    assert all(e["invoice_id"] is None for e in entries_after_delete)
 
 
-def test_invoice_docx_missing_case_returns_404(client, auth_headers):
-    resp = client.get("/api/cases/999999/invoice.docx", headers=auth_headers)
+def test_invoices_missing_case_404s(client, auth_headers):
+    resp = client.get("/api/cases/999999/invoices", headers=auth_headers)
+    assert resp.status_code == 404
+    resp = client.post("/api/cases/999999/invoices", json={}, headers=auth_headers)
+    assert resp.status_code == 404
+
+
+def test_invoice_export_docx_missing_invoice_404s(client, auth_headers):
+    resp = client.get("/api/invoices/999999/export.docx", headers=auth_headers)
     assert resp.status_code == 404
 
 

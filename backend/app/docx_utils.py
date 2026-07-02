@@ -1,6 +1,4 @@
 import io
-from datetime import datetime
-from typing import Sequence
 
 from docx import Document as DocxDocument
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -30,29 +28,24 @@ def build_docx_from_text(title: str, content: str) -> bytes:
     return buffer.getvalue()
 
 
-def build_invoice_docx(
-    case,
-    client,
-    time_entries: Sequence,
-    missing_rate_count: int,
-) -> bytes:
-    """Build a client-ready Word invoice from a case's billable, priced time
-    entries. Entries that are not billable, or billable but missing an
-    hourly rate, are excluded from the itemized table and the total - the
-    document explicitly states how many billable entries were excluded for
-    missing a rate, so it is never silently wrong about what it billed."""
+INVOICE_STATUS_LABEL = {"draft": "טיוטה", "sent": "נשלחה", "paid": "שולמה"}
+
+
+def build_invoice_docx(invoice, case, client) -> bytes:
+    """Build a client-ready Word document for an already-generated Invoice,
+    itemizing the time entries snapshotted into it (see routers/invoices.py -
+    every entry attached to an invoice is by construction billable and
+    priced, since that's a precondition of invoice generation)."""
     docx = DocxDocument()
 
     docx.add_heading("חשבונית שירותים משפטיים", level=1)
 
     meta = docx.add_paragraph()
+    meta.add_run(f"מספר חשבונית: {invoice.invoice_number}\n")
     meta.add_run(f"לקוח: {client.full_name}\n")
     meta.add_run(f"תיק: {case.title} ({case.case_number})\n")
-    meta.add_run(f"תאריך הפקה: {datetime.utcnow().strftime('%d/%m/%Y')}")
-
-    priced_entries = [
-        e for e in time_entries if e.billable and e.hourly_rate is not None
-    ]
+    meta.add_run(f"תאריך הפקה: {invoice.issue_date.strftime('%d/%m/%Y')}\n")
+    meta.add_run(f"סטטוס: {INVOICE_STATUS_LABEL.get(invoice.status.value, invoice.status.value)}")
 
     table = docx.add_table(rows=1, cols=5)
     table.style = "Light Grid Accent 1"
@@ -64,10 +57,8 @@ def build_invoice_docx(
             for run in p.runs:
                 run.bold = True
 
-    total = 0.0
-    for entry in priced_entries:
+    for entry in invoice.time_entries:
         line_total = entry.hours * entry.hourly_rate
-        total += line_total
         row_cells = table.add_row().cells
         row_cells[0].text = entry.entry_date.strftime("%d/%m/%Y")
         row_cells[1].text = entry.description
@@ -75,23 +66,18 @@ def build_invoice_docx(
         row_cells[3].text = f"{entry.hourly_rate:,.2f}"
         row_cells[4].text = f"{line_total:,.2f}"
 
-    if not priced_entries:
+    if not invoice.time_entries:
         empty_note = docx.add_paragraph()
-        empty_note.add_run(
-            "אין רישומי שעות לחיוב בעלי תעריף שעתי עבור תיק זה נכון למועד הפקת החשבונית."
-        ).italic = True
+        empty_note.add_run("לחשבונית זו אין רישומי שעות משויכים.").italic = True
 
     total_para = docx.add_paragraph()
-    total_run = total_para.add_run(f'סה"כ לתשלום: {total:,.2f} ₪')
+    total_run = total_para.add_run(f'סה"כ לתשלום: {invoice.total_amount:,.2f} ₪')
     total_run.bold = True
     total_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
-    if missing_rate_count > 0:
+    if invoice.notes:
         note = docx.add_paragraph()
-        note.add_run(
-            f"לתשומת לב: {missing_rate_count} רישומי שעות לחיוב אינם כלולים בחשבונית זו "
-            "מאחר וחסר להם תעריף שעתי."
-        ).italic = True
+        note.add_run(f"הערות: {invoice.notes}").italic = True
 
     buffer = io.BytesIO()
     docx.save(buffer)

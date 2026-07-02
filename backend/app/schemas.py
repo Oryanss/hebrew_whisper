@@ -3,7 +3,15 @@ from typing import Optional
 
 from pydantic import BaseModel, EmailStr, ConfigDict, Field
 
-from .models import UserRole, CaseStatus, DocumentStatus, AuthoritySourceDb, DeadlineStatus, RiskCategory
+from .models import (
+    UserRole,
+    CaseStatus,
+    DocumentStatus,
+    AuthoritySourceDb,
+    DeadlineStatus,
+    InvoiceStatus,
+    RiskCategory,
+)
 
 
 # --- Auth ---
@@ -183,6 +191,7 @@ class TimeEntryOut(BaseModel):
     billable: bool
     created_at: datetime
     case_id: int
+    invoice_id: Optional[int] = None
 
 
 class BillingSummary(BaseModel):
@@ -190,6 +199,32 @@ class BillingSummary(BaseModel):
     billable_hours: float
     total_billable_amount: float
     entries_missing_rate: int
+
+
+# --- Invoices ---
+class InvoiceCreate(BaseModel):
+    notes: Optional[str] = None
+
+
+class InvoiceUpdate(BaseModel):
+    status: Optional[InvoiceStatus] = None
+    notes: Optional[str] = None
+
+
+class InvoiceOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    invoice_number: str
+    issue_date: datetime
+    total_amount: float
+    status: InvoiceStatus
+    notes: Optional[str] = None
+    created_at: datetime
+    case_id: int
+
+
+class InvoiceDetailOut(InvoiceOut):
+    time_entries: list[TimeEntryOut] = []
 
 
 # --- Case notes / timeline ---

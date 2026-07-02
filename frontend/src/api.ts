@@ -104,6 +104,8 @@ import type {
   LegalResearchResult,
   RiskAssessment,
   Task,
+  Invoice,
+  InvoiceDetail,
 } from "./types";
 
 export const api = {
@@ -159,8 +161,6 @@ export const api = {
     request<void>(`/api/time-entries/${id}`, { method: "DELETE" }),
   getBillingSummary: (caseId: number) =>
     request<BillingSummary>(`/api/cases/${caseId}/billing-summary`),
-  downloadInvoice: (caseId: number, caseTitle: string) =>
-    downloadFile(`/api/cases/${caseId}/invoice.docx`, `invoice-${caseTitle}.docx`),
 
   listCaseNotes: (caseId: number) => request<CaseNote[]>(`/api/cases/${caseId}/notes`),
   createCaseNote: (caseId: number, data: object) =>
@@ -218,6 +218,16 @@ export const api = {
   updateTask: (id: number, data: object) =>
     request<Task>(`/api/tasks/${id}`, { method: "PATCH", body: data }),
   deleteTask: (id: number) => request<void>(`/api/tasks/${id}`, { method: "DELETE" }),
+
+  listCaseInvoices: (caseId: number) => request<Invoice[]>(`/api/cases/${caseId}/invoices`),
+  createInvoice: (caseId: number, data: object = {}) =>
+    request<Invoice>(`/api/cases/${caseId}/invoices`, { method: "POST", body: data }),
+  getInvoice: (id: number) => request<InvoiceDetail>(`/api/invoices/${id}`),
+  updateInvoice: (id: number, data: object) =>
+    request<Invoice>(`/api/invoices/${id}`, { method: "PATCH", body: data }),
+  deleteInvoice: (id: number) => request<void>(`/api/invoices/${id}`, { method: "DELETE" }),
+  downloadInvoiceDocx: (invoiceId: number, invoiceNumber: string) =>
+    downloadFile(`/api/invoices/${invoiceId}/export.docx`, `${invoiceNumber}.docx`),
 };
 
 export { request };

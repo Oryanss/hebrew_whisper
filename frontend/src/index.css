@@ -324,6 +324,21 @@ button:disabled {
   border-radius: 4px;
 }
 
+.invoice-draft {
+  background: #eee;
+  color: #555;
+}
+
+.invoice-sent {
+  background: #fdf2e3;
+  color: #8a6d1f;
+}
+
+.invoice-paid {
+  background: #e2f0e5;
+  color: var(--success);
+}
+
 .error-text {
   color: var(--danger);
   background: #fbeceb;

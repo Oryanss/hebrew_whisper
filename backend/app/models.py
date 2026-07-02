@@ -41,6 +41,12 @@ class DeadlineStatus(str, enum.Enum):
     MISSED = "missed"
 
 
+class InvoiceStatus(str, enum.Enum):
+    DRAFT = "draft"
+    SENT = "sent"
+    PAID = "paid"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -87,6 +93,7 @@ class Case(Base):
     authorities = relationship("Authority", back_populates="case", cascade="all, delete-orphan")
     deadlines = relationship("Deadline", back_populates="case", cascade="all, delete-orphan")
     time_entries = relationship("TimeEntry", back_populates="case", cascade="all, delete-orphan")
+    invoices = relationship("Invoice", back_populates="case", cascade="all, delete-orphan")
     notes = relationship(
         "CaseNote", back_populates="case", cascade="all, delete-orphan", order_by="CaseNote.created_at"
     )
@@ -191,6 +198,29 @@ class TimeEntry(Base):
 
     case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
     case = relationship("Case", back_populates="time_entries")
+
+    invoice_id = Column(Integer, ForeignKey("invoices.id"), nullable=True)
+    invoice = relationship("Invoice", back_populates="time_entries")
+
+
+class Invoice(Base):
+    """A generated invoice for a case, produced from a set of billable time
+    entries that had not yet been invoiced. Entries stay attached to their
+    invoice (via TimeEntry.invoice_id) so a lawyer can trace what was billed."""
+
+    __tablename__ = "invoices"
+
+    id = Column(Integer, primary_key=True, index=True)
+    invoice_number = Column(String, nullable=False, index=True)
+    issue_date = Column(DateTime, default=datetime.utcnow)
+    total_amount = Column(Float, nullable=False)
+    status = Column(Enum(InvoiceStatus), default=InvoiceStatus.DRAFT, nullable=False)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
+    case = relationship("Case", back_populates="invoices")
+    time_entries = relationship("TimeEntry", back_populates="invoice")
 
 
 class CaseNote(Base):
