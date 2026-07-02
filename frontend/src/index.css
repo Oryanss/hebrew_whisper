@@ -665,6 +665,8 @@ button:disabled {
 
 .tab-panel.active {
   display: block;
+}
+
 /* Nav links (topbar) */
 .nav-link {
   display: flex;
@@ -949,6 +951,8 @@ button:disabled {
 .deadline-date {
   white-space: nowrap;
   flex-shrink: 0;
+}
+
 /* ---------------------------------------------------------------------- */
 /* Dark mode                                                              */
 /* ---------------------------------------------------------------------- */
