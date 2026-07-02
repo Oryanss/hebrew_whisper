@@ -1,16 +1,49 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { Clock3, FolderKanban, FolderOpen, Hourglass, Users2 } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  CalendarClock,
+  CheckCircle2,
+  Clock3,
+  FolderKanban,
+  FolderOpen,
+  Hourglass,
+  Search,
+  Users2,
+} from "lucide-react";
 import { api, ApiError } from "../api";
 import EmptyState from "../components/EmptyState";
 import StatCard from "../components/StatCard";
-import type { Case, Client, DeadlineWithCase } from "../types";
+import type { Case, CaseStatus, Client, DeadlineWithCase } from "../types";
 
-const CASE_STATUS_LABEL: Record<string, string> = {
+const CASE_STATUS_LABEL: Record<CaseStatus, string> = {
   open: "פתוח",
   pending: "ממתין",
   closed: "סגור",
 };
+
+const STATUS_FILTERS: { value: CaseStatus | "all"; label: string }[] = [
+  { value: "all", label: "הכל" },
+  { value: "open", label: "פתוחים" },
+  { value: "pending", label: "ממתינים" },
+  { value: "closed", label: "סגורים" },
+];
+
+type SortKey = "case_number" | "title" | "client" | "status";
+type SortDir = "asc" | "desc";
+
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+function urgencyOf(dueDate: string): { key: "overdue" | "urgent" | "soon" | "later"; label: string } {
+  const diffDays = Math.ceil((new Date(dueDate).getTime() - Date.now()) / MS_PER_DAY);
+  if (diffDays < 0) return { key: "overdue", label: "באיחור" };
+  if (diffDays <= 1) return { key: "urgent", label: "דחוף" };
+  if (diffDays <= 4) return { key: "soon", label: "בקרוב" };
+  return { key: "later", label: "בהמשך" };
+}
 
 export default function DashboardPage() {
   const [cases, setCases] = useState<Case[]>([]);
@@ -18,7 +51,12 @@ export default function DashboardPage() {
   const [upcomingDeadlines, setUpcomingDeadlines] = useState<DeadlineWithCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<CaseStatus | "all">("all");
+  const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("case_number");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   function reload() {
     setLoading(true);
@@ -36,8 +74,9 @@ export default function DashboardPage() {
 
   async function handleCreate(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    setError(null);
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
+    setFormError(null);
     try {
       await api.createCase({
         case_number: form.get("case_number"),
@@ -48,23 +87,94 @@ export default function DashboardPage() {
         description: form.get("description") || null,
         client_id: Number(form.get("client_id")),
       });
+      formEl.reset();
       setShowForm(false);
       reload();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "שגיאה ביצירת תיק");
+      setFormError(err instanceof ApiError ? err.message : "שגיאה ביצירת תיק");
     }
   }
 
   const clientName = (id: number) => clients.find((c) => c.id === id)?.full_name ?? "-";
   const openCount = cases.filter((c) => c.status === "open").length;
   const pendingCount = cases.filter((c) => c.status === "pending").length;
+  const closedCount = cases.filter((c) => c.status === "closed").length;
+
+  function toggleSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  const visibleCases = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const filtered = cases.filter((c) => {
+      if (statusFilter !== "all" && c.status !== statusFilter) return false;
+      if (!term) return true;
+      const haystack = `${c.case_number} ${c.title} ${clientName(c.client_id)}`.toLowerCase();
+      return haystack.includes(term);
+    });
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      let av: string;
+      let bv: string;
+      switch (sortKey) {
+        case "title":
+          av = a.title;
+          bv = b.title;
+          break;
+        case "client":
+          av = clientName(a.client_id);
+          bv = clientName(b.client_id);
+          break;
+        case "status":
+          av = a.status;
+          bv = b.status;
+          break;
+        default:
+          av = a.case_number;
+          bv = b.case_number;
+      }
+      return av.localeCompare(bv, "he") * dir;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cases, statusFilter, search, sortKey, sortDir, clients]);
+
+  const groupedDeadlines = useMemo(() => {
+    const sorted = [...upcomingDeadlines].sort(
+      (a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+    );
+    const groups: Record<string, DeadlineWithCase[]> = {
+      overdue: [],
+      urgent: [],
+      soon: [],
+      later: [],
+    };
+    for (const d of sorted) {
+      groups[urgencyOf(d.due_date).key].push(d);
+    }
+    return groups;
+  }, [upcomingDeadlines]);
+
+  function sortIcon(key: SortKey) {
+    if (sortKey !== key) return <ArrowUpDown size={13} className="muted" />;
+    return sortDir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />;
+  }
 
   return (
     <div>
       <div className="page-header">
-        <h1>
-          <FolderKanban size={20} /> לוח תיקים
-        </h1>
+        <div>
+          <h1>
+            <FolderKanban size={20} /> לוח תיקים
+          </h1>
+          <p className="page-subtitle">
+            סקירה כללית של {cases.length} תיקים ו-{clients.length} לקוחות במערכת
+          </p>
+        </div>
         <button onClick={() => setShowForm((v) => !v)}>{showForm ? "ביטול" : "תיק חדש"}</button>
       </div>
 
@@ -74,6 +184,7 @@ export default function DashboardPage() {
         <div className="stat-grid">
           <StatCard icon={FolderOpen} value={openCount} label="תיקים פתוחים" tone="indigo" />
           <StatCard icon={Hourglass} value={pendingCount} label="תיקים בהמתנה" tone="amber" />
+          <StatCard icon={CheckCircle2} value={closedCount} label="תיקים סגורים" tone="slate" />
           <StatCard
             icon={Clock3}
             value={upcomingDeadlines.length}
@@ -84,28 +195,9 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {!loading && upcomingDeadlines.length > 0 && (
-        <section className="card">
-          <h2>
-            <Clock3 size={16} /> מועדים קרובים (14 יום)
-          </h2>
-          <ul className="doc-list">
-            {upcomingDeadlines.map((d) => (
-              <li key={d.id}>
-                <Link to={`/cases/${d.case_id}`}>
-                  {d.title} - {d.case_title} ({d.case_number})
-                </Link>{" "}
-                <span className="muted small">
-                  {new Date(d.due_date).toLocaleDateString("he-IL")}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
       {showForm && (
         <form className="card form-card" onSubmit={handleCreate}>
+          {formError && <div className="error-text">{formError}</div>}
           <div className="form-grid">
             <label>
               מספר תיק
@@ -159,40 +251,152 @@ export default function DashboardPage() {
         </form>
       )}
 
-      {loading ? (
-        <p>טוען...</p>
-      ) : cases.length === 0 ? (
-        <EmptyState icon={FolderOpen} title="אין עדיין תיקים במערכת" subtitle="לחצו על 'תיק חדש' כדי להתחיל" />
-      ) : (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>מספר תיק</th>
-              <th>כותרת</th>
-              <th>לקוח</th>
-              <th>סטטוס</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {cases.map((c) => (
-              <tr key={c.id}>
-                <td>{c.case_number}</td>
-                <td>{c.title}</td>
-                <td>{clientName(c.client_id)}</td>
-                <td>
-                  <span className={`status-pill status-${c.status}`}>
-                    {CASE_STATUS_LABEL[c.status]}
-                  </span>
-                </td>
-                <td>
-                  <Link to={`/cases/${c.id}`}>פתיחת תיק</Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <div className="dashboard-layout">
+        <section>
+          {!loading && cases.length > 0 && (
+            <div className="table-toolbar">
+              <div className="search-box">
+                <Search size={15} />
+                <input
+                  type="search"
+                  placeholder="חיפוש לפי מספר תיק, כותרת או לקוח..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <div className="status-filter-group">
+                {STATUS_FILTERS.map((f) => (
+                  <button
+                    key={f.value}
+                    type="button"
+                    className={`status-filter-chip ${statusFilter === f.value ? "active" : ""}`}
+                    onClick={() => setStatusFilter(f.value)}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {loading ? (
+            <p>טוען...</p>
+          ) : cases.length === 0 ? (
+            <EmptyState
+              icon={FolderOpen}
+              title="אין עדיין תיקים במערכת"
+              subtitle="לחצו על 'תיק חדש' כדי להתחיל"
+            />
+          ) : visibleCases.length === 0 ? (
+            <EmptyState icon={Search} title="לא נמצאו תיקים תואמים" subtitle="נסו לשנות את החיפוש או הסינון" />
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>
+                    <button type="button" className="sort-header" onClick={() => toggleSort("case_number")}>
+                      מספר תיק {sortIcon("case_number")}
+                    </button>
+                  </th>
+                  <th>
+                    <button type="button" className="sort-header" onClick={() => toggleSort("title")}>
+                      כותרת {sortIcon("title")}
+                    </button>
+                  </th>
+                  <th>
+                    <button type="button" className="sort-header" onClick={() => toggleSort("client")}>
+                      לקוח {sortIcon("client")}
+                    </button>
+                  </th>
+                  <th>
+                    <button type="button" className="sort-header" onClick={() => toggleSort("status")}>
+                      סטטוס {sortIcon("status")}
+                    </button>
+                  </th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleCases.map((c) => (
+                  <tr key={c.id}>
+                    <td>{c.case_number}</td>
+                    <td>{c.title}</td>
+                    <td>{clientName(c.client_id)}</td>
+                    <td>
+                      <span className={`status-pill status-${c.status}`}>
+                        {CASE_STATUS_LABEL[c.status]}
+                      </span>
+                    </td>
+                    <td>
+                      <Link to={`/cases/${c.id}`}>פתיחת תיק</Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+
+        <aside>
+          <section className="card deadlines-widget">
+            <h2>
+              <Clock3 size={16} /> מועדים קרובים (14 יום)
+            </h2>
+            {!loading && upcomingDeadlines.length === 0 ? (
+              <p className="muted small">אין מועדים קרובים בטווח הזמן הזה.</p>
+            ) : (
+              <ul className="deadline-groups">
+                {(["overdue", "urgent", "soon", "later"] as const).map((key) =>
+                  groupedDeadlines[key].length === 0 ? null : (
+                    <li key={key} className={`deadline-group deadline-group-${key}`}>
+                      <div className="deadline-group-label">
+                        {urgencyIcon(key)} {urgencyLabel(key)}
+                      </div>
+                      <ul className="doc-list">
+                        {groupedDeadlines[key].map((d) => (
+                          <li key={d.id}>
+                            <Link to={`/cases/${d.case_id}`}>
+                              {d.title} - {d.case_title} ({d.case_number})
+                            </Link>
+                            <span className="muted small deadline-date">
+                              {new Date(d.due_date).toLocaleDateString("he-IL")}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  )
+                )}
+              </ul>
+            )}
+          </section>
+        </aside>
+      </div>
     </div>
   );
+}
+
+function urgencyLabel(key: "overdue" | "urgent" | "soon" | "later"): string {
+  switch (key) {
+    case "overdue":
+      return "באיחור";
+    case "urgent":
+      return "דחוף (היום/מחר)";
+    case "soon":
+      return "בקרוב (עד 4 ימים)";
+    default:
+      return "בהמשך";
+  }
+}
+
+function urgencyIcon(key: "overdue" | "urgent" | "soon" | "later") {
+  switch (key) {
+    case "overdue":
+    case "urgent":
+      return <AlertTriangle size={13} />;
+    case "soon":
+      return <Clock3 size={13} />;
+    default:
+      return <CalendarClock size={13} />;
+  }
 }

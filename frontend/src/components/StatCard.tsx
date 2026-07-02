@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 
-export type StatTone = "indigo" | "emerald" | "amber" | "rose";
+export type StatTone = "indigo" | "emerald" | "amber" | "rose" | "slate";
 
 export default function StatCard({
   icon: Icon,

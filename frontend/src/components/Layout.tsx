@@ -1,8 +1,15 @@
-import { LayoutDashboard, LogOut, Scale, Search, Users } from "lucide-react";
-import { Link, Outlet, useNavigate } from "react-router-dom";
+import { LayoutDashboard, Scale, Search, Users } from "lucide-react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useAccentColor } from "../theme";
 import AccentPicker from "./AccentPicker";
+import UserMenu from "./UserMenu";
+
+const NAV_ITEMS = [
+  { to: "/", label: "לוח תיקים", icon: LayoutDashboard, end: true },
+  { to: "/clients", label: "לקוחות", icon: Users, end: false },
+  { to: "/research", label: "מחקר וספריית ידע", icon: Search, end: false },
+];
 
 export default function Layout() {
   const { user, logout } = useAuth();
@@ -17,28 +24,29 @@ export default function Layout() {
           <span>פלטפורמת ניהול תיקים משפטיים</span>
         </div>
         <nav>
-          <Link to="/">
-            <LayoutDashboard size={16} /> לוח תיקים
-          </Link>
-          <Link to="/clients">
-            <Users size={16} /> לקוחות
-          </Link>
-          <Link to="/research">
-            <Search size={16} /> מחקר וספריית ידע
-          </Link>
+          {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+            >
+              <Icon size={16} />
+              <span>{label}</span>
+            </NavLink>
+          ))}
         </nav>
         <div className="user-box">
           <AccentPicker accent={accent} onChange={setAccent} />
-          {user && <span>{user.full_name}</span>}
-          <button
-            className="link-button"
-            onClick={() => {
-              logout();
-              navigate("/login");
-            }}
-          >
-            <LogOut size={14} /> התנתקות
-          </button>
+          {user && (
+            <UserMenu
+              user={user}
+              onLogout={() => {
+                logout();
+                navigate("/login");
+              }}
+            />
+          )}
         </div>
       </header>
       <div className="disclaimer-banner">
