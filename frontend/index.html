@@ -11,6 +11,23 @@
       rel="stylesheet"
     />
     <title>פלטפורמת ניהול תיקים משפטיים</title>
+    <script>
+      // Apply the persisted theme (see useTheme in src/theme.ts) before React
+      // mounts, so every page - not just the ones that render a
+      // ThemeToggle - starts in the right theme on a fresh load instead of
+      // flashing light mode first.
+      (function () {
+        try {
+          var stored = localStorage.getItem("legal_platform_theme");
+          document.documentElement.setAttribute(
+            "data-theme",
+            stored === "dark" ? "dark" : "light"
+          );
+        } catch (e) {
+          /* localStorage unavailable - keep default light styling */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

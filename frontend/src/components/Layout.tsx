@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useAccentColor } from "../theme";
 import AccentPicker from "./AccentPicker";
+import ThemeToggle from "./ThemeToggle";
 import UserMenu from "./UserMenu";
 
 const NAV_ITEMS = [
@@ -37,6 +38,7 @@ export default function Layout() {
           ))}
         </nav>
         <div className="user-box">
+          <ThemeToggle />
           <AccentPicker accent={accent} onChange={setAccent} />
           {user && (
             <UserMenu

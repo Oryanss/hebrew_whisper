@@ -1,6 +1,9 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { BookMarked, Search } from "lucide-react";
 import { api, ApiError } from "../api";
+import { SkeletonTable } from "../components/Skeleton";
+import ToastContainer from "../components/Toast";
+import { useToast } from "../hooks/useToast";
 import type { KnowledgeDocumentMeta, LegalResearchResult } from "../types";
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -12,16 +15,20 @@ const CATEGORY_LABEL: Record<string, string> = {
 
 export default function ResearchPage() {
   const [documents, setDocuments] = useState<KnowledgeDocumentMeta[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [docsLoading, setDocsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [researching, setResearching] = useState(false);
   const [result, setResult] = useState<LegalResearchResult | null>(null);
+  const { toasts, toast, dismiss } = useToast();
 
   function reload() {
+    setDocsLoading(true);
     api
       .listKnowledgeDocuments()
       .then(setDocuments)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "שגיאה בטעינת ספריית הידע"));
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : "שגיאה בטעינת ספריית הידע"))
+      .finally(() => setDocsLoading(false));
   }
 
   useEffect(reload, []);
@@ -33,7 +40,6 @@ export default function ResearchPage() {
     const fileInput = formEl.elements.namedItem("file") as HTMLInputElement | null;
     const file = fileInput?.files?.[0];
     if (!file) return;
-    setError(null);
     setUploading(true);
     try {
       await api.uploadKnowledgeDocument(
@@ -42,36 +48,37 @@ export default function ResearchPage() {
         file
       );
       formEl.reset();
+      toast.success("המסמך הועלה בהצלחה לספריית הידע");
       reload();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "שגיאה בהעלאת המסמך");
+      toast.error(err instanceof ApiError ? err.message : "שגיאה בהעלאת המסמך");
     } finally {
       setUploading(false);
     }
   }
 
   async function handleDelete(id: number) {
-    setError(null);
     try {
       await api.deleteKnowledgeDocument(id);
       setDocuments((prev) => prev.filter((d) => d.id !== id));
+      toast.success("המסמך נמחק בהצלחה");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "שגיאה במחיקת מסמך");
+      toast.error(err instanceof ApiError ? err.message : "שגיאה במחיקת מסמך");
     }
   }
 
   async function handleResearch(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    setError(null);
     setResearching(true);
     setResult(null);
     try {
       const useLibrary = form.get("use_library") === "on";
       const res = await api.runLegalResearch(String(form.get("query") || ""), useLibrary);
       setResult(res);
+      toast.success("המחקר הושלם בהצלחה");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "שגיאה בביצוע המחקר");
+      toast.error(err instanceof ApiError ? err.message : "שגיאה בביצוע המחקר");
     } finally {
       setResearching(false);
     }
@@ -79,12 +86,13 @@ export default function ResearchPage() {
 
   return (
     <div>
+      <ToastContainer toasts={toasts} onDismiss={dismiss} />
       <div className="page-header">
         <h1>
           <Search size={20} /> מחקר משפטי וספריית ידע
         </h1>
       </div>
-      {error && <div className="error-text">{error}</div>}
+      {loadError && <div className="error-text">{loadError}</div>}
 
       <section className="card">
         <h2>
@@ -179,7 +187,9 @@ export default function ResearchPage() {
           </button>
         </form>
 
-        {documents.length === 0 ? (
+        {docsLoading ? (
+          <SkeletonTable rows={3} cols={3} />
+        ) : documents.length === 0 ? (
           <p className="muted small">אין עדיין מסמכים בספריית הידע.</p>
         ) : (
           <table className="data-table">

@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { Scale } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { api, ApiError } from "../api";
+import { useToast } from "../hooks/useToast";
+import ToastContainer from "../components/Toast";
+import ThemeToggle from "../components/ThemeToggle";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -11,21 +14,25 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const { toasts, toast, dismiss } = useToast();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setError(null);
     setBusy(true);
     try {
       if (mode === "register") {
         await api.register(fullName, email, password);
+        toast.success("החשבון נוצר בהצלחה, מתחברים...");
+        // Brief pause so the confirmation toast is actually visible before
+        // this page unmounts on navigation - otherwise register+login+
+        // navigate can complete fast enough that the toast never renders.
+        await new Promise((resolve) => setTimeout(resolve, 700));
       }
       await login(email, password);
       navigate("/");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "אירעה שגיאה, נסה/י שוב");
+      toast.error(err instanceof ApiError ? err.message : "אירעה שגיאה, נסה/י שוב");
     } finally {
       setBusy(false);
     }
@@ -33,7 +40,11 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page">
+      <ToastContainer toasts={toasts} onDismiss={dismiss} />
       <form className="auth-card" onSubmit={handleSubmit}>
+        <div className="auth-topbar">
+          <ThemeToggle />
+        </div>
         <div className="auth-logo">
           <Scale size={28} />
         </div>
@@ -63,7 +74,6 @@ export default function LoginPage() {
             minLength={8}
           />
         </label>
-        {error && <div className="error-text">{error}</div>}
         <button type="submit" disabled={busy}>
           {mode === "login" ? "התחברות" : "הרשמה והתחברות"}
         </button>

@@ -27,3 +27,45 @@ export function useAccentColor() {
 
   return { accent, setAccent };
 }
+
+// --- Dark mode -------------------------------------------------------------
+//
+// Same localStorage-persisted pattern as useAccentColor above. The active
+// theme is reflected as a `data-theme="dark" | "light"` attribute on
+// <html>, and `frontend/src/index.css` defines dark equivalents for the
+// core CSS custom properties (--bg, --surface, --ink, --border, etc.) under
+// a `[data-theme="dark"]` selector. Any component that only reads those
+// custom properties (which is effectively everything already, since colors
+// are themed via CSS vars) gets dark mode "for free" without further code
+// changes.
+
+export type ThemeMode = "light" | "dark";
+
+const THEME_STORAGE_KEY = "legal_platform_theme";
+const DEFAULT_THEME: ThemeMode = "light";
+
+function isThemeMode(value: string | null): value is ThemeMode {
+  return value === "light" || value === "dark";
+}
+
+export function useTheme() {
+  const [theme, setThemeState] = useState<ThemeMode>(() => {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    return isThemeMode(stored) ? stored : DEFAULT_THEME;
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
+
+  function setTheme(value: ThemeMode) {
+    localStorage.setItem(THEME_STORAGE_KEY, value);
+    setThemeState(value);
+  }
+
+  function toggleTheme() {
+    setTheme(theme === "light" ? "dark" : "light");
+  }
+
+  return { theme, setTheme, toggleTheme };
+}
