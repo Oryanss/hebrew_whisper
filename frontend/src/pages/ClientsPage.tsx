@@ -2,20 +2,24 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Users } from "lucide-react";
 import { api, ApiError } from "../api";
 import EmptyState from "../components/EmptyState";
+import { SkeletonTable } from "../components/Skeleton";
+import ToastContainer from "../components/Toast";
+import { useToast } from "../hooks/useToast";
 import type { Client } from "../types";
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const { toasts, toast, dismiss } = useToast();
 
   function reload() {
     setLoading(true);
     api
       .listClients()
       .then(setClients)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "שגיאה בטעינת לקוחות"))
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : "שגיאה בטעינת לקוחות"))
       .finally(() => setLoading(false));
   }
 
@@ -23,8 +27,8 @@ export default function ClientsPage() {
 
   async function handleCreate(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    setError(null);
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
     try {
       await api.createClient({
         full_name: form.get("full_name"),
@@ -33,21 +37,24 @@ export default function ClientsPage() {
         email: form.get("email") || null,
         address: form.get("address") || null,
       });
+      formEl.reset();
       setShowForm(false);
+      toast.success("הלקוח נוסף בהצלחה");
       reload();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "שגיאה ביצירת לקוח");
+      toast.error(err instanceof ApiError ? err.message : "שגיאה ביצירת לקוח");
     }
   }
 
   return (
     <div>
+      <ToastContainer toasts={toasts} onDismiss={dismiss} />
       <div className="page-header">
         <h1><Users size={20} /> לקוחות</h1>
         <button onClick={() => setShowForm((v) => !v)}>{showForm ? "ביטול" : "לקוח חדש"}</button>
       </div>
 
-      {error && <div className="error-text">{error}</div>}
+      {loadError && <div className="error-text">{loadError}</div>}
 
       {showForm && (
         <form className="card form-card" onSubmit={handleCreate}>
@@ -78,7 +85,7 @@ export default function ClientsPage() {
       )}
 
       {loading ? (
-        <p>טוען...</p>
+        <SkeletonTable rows={4} cols={4} />
       ) : clients.length === 0 ? (
         <EmptyState icon={Users} title="אין עדיין לקוחות במערכת" subtitle="לחצו על 'לקוח חדש' כדי להתחיל" />
       ) : (
