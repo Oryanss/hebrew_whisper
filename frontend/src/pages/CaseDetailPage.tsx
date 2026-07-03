@@ -88,6 +88,12 @@ const INVOICE_STATUS_LABEL: Record<string, string> = {
   paid: "שולמה",
 };
 
+const CASE_STATUS_LABEL: Record<string, string> = {
+  open: "פתוח",
+  pending: "ממתין",
+  closed: "סגור",
+};
+
 const CASE_TABS: TabDef[] = [
   { id: "overview", label: "סקירה כללית", icon: Info },
   { id: "documents", label: "מסמכים וניסוח", icon: FileText },
@@ -590,7 +596,9 @@ export default function CaseDetailPage() {
         <h1>
           {caseData.title} <span className="muted">({caseData.case_number})</span>
         </h1>
-        <span className={`status-pill status-${caseData.status}`}>{caseData.status}</span>
+        <span className={`status-pill status-${caseData.status}`}>
+          {CASE_STATUS_LABEL[caseData.status] ?? caseData.status}
+        </span>
       </div>
       {error && <div className="error-text">{error}</div>}
 
@@ -876,7 +884,7 @@ export default function CaseDetailPage() {
               </label>
             </div>
             <label style={{ flexDirection: "row", alignItems: "center", gap: "0.4rem" }}>
-              <input name="billable" type="checkbox" defaultChecked style={{ width: "auto" }} />
+              <input name="billable" type="checkbox" defaultChecked />
               ניתן לחיוב
             </label>
             <button type="submit">הוספת רישום שעות</button>
@@ -884,16 +892,19 @@ export default function CaseDetailPage() {
           {timeEntries.length === 0 ? (
             <p className="muted small">אין רישומי שעות בתיק זה.</p>
           ) : (
+            <div className="table-scroll">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>תיאור</th>
-                  <th>תאריך</th>
-                  <th>שעות</th>
-                  <th>תעריף</th>
-                  <th>לחיוב</th>
-                  <th>חשבונית</th>
-                  <th></th>
+                  <th scope="col">תיאור</th>
+                  <th scope="col">תאריך</th>
+                  <th scope="col">שעות</th>
+                  <th scope="col">תעריף</th>
+                  <th scope="col">לחיוב</th>
+                  <th scope="col">חשבונית</th>
+                  <th scope="col">
+                    <span className="visually-hidden">פעולות</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -922,6 +933,7 @@ export default function CaseDetailPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </section>
 
@@ -937,14 +949,17 @@ export default function CaseDetailPage() {
           {invoices.length === 0 ? (
             <p className="muted small">אין עדיין חשבוניות בתיק זה.</p>
           ) : (
+            <div className="table-scroll">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>מספר חשבונית</th>
-                  <th>תאריך הפקה</th>
-                  <th>סכום</th>
-                  <th>סטטוס</th>
-                  <th></th>
+                  <th scope="col">מספר חשבונית</th>
+                  <th scope="col">תאריך הפקה</th>
+                  <th scope="col">סכום</th>
+                  <th scope="col">סטטוס</th>
+                  <th scope="col">
+                    <span className="visually-hidden">פעולות</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -994,6 +1009,7 @@ export default function CaseDetailPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </section>
       </TabPanel>
@@ -1032,6 +1048,7 @@ export default function CaseDetailPage() {
                   <input
                     type="checkbox"
                     checked={t.done}
+                    aria-label={`סימון המשימה "${t.title}" כבוצעה`}
                     onChange={(e) => handleToggleTask(t.id, e.target.checked)}
                   />
                   <span className="task-title">
@@ -1081,13 +1098,16 @@ export default function CaseDetailPage() {
           {deadlines.length === 0 ? (
             <p className="muted small">אין מועדים רשומים בתיק זה.</p>
           ) : (
+            <div className="table-scroll">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>כותרת</th>
-                  <th>תאריך יעד</th>
-                  <th>סטטוס</th>
-                  <th></th>
+                  <th scope="col">כותרת</th>
+                  <th scope="col">תאריך יעד</th>
+                  <th scope="col">סטטוס</th>
+                  <th scope="col">
+                    <span className="visually-hidden">פעולות</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1122,6 +1142,7 @@ export default function CaseDetailPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </section>
 
@@ -1175,14 +1196,17 @@ export default function CaseDetailPage() {
           {meetings.length === 0 ? (
             <p className="muted small">אין פגישות רשומות בתיק זה.</p>
           ) : (
+            <div className="table-scroll">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>כותרת</th>
-                  <th>סוג</th>
-                  <th>תחילה</th>
-                  <th>מיקום</th>
-                  <th></th>
+                  <th scope="col">כותרת</th>
+                  <th scope="col">סוג</th>
+                  <th scope="col">תחילה</th>
+                  <th scope="col">מיקום</th>
+                  <th scope="col">
+                    <span className="visually-hidden">פעולות</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1295,6 +1319,7 @@ export default function CaseDetailPage() {
                 )}
               </tbody>
             </table>
+            </div>
           )}
         </section>
       </TabPanel>

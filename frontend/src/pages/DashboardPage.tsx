@@ -195,6 +195,11 @@ export default function DashboardPage() {
     return sortDir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />;
   }
 
+  function ariaSort(key: SortKey): "ascending" | "descending" | undefined {
+    if (sortKey !== key) return undefined;
+    return sortDir === "asc" ? "ascending" : "descending";
+  }
+
   return (
     <div>
       <div className="page-header">
@@ -296,6 +301,7 @@ export default function DashboardPage() {
                 <Search size={15} />
                 <input
                   type="search"
+                  aria-label="חיפוש לפי מספר תיק, כותרת או לקוח"
                   placeholder="חיפוש לפי מספר תיק, כותרת או לקוח..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -307,6 +313,7 @@ export default function DashboardPage() {
                     key={f.value}
                     type="button"
                     className={`status-filter-chip ${statusFilter === f.value ? "active" : ""}`}
+                    aria-pressed={statusFilter === f.value}
                     onClick={() => setStatusFilter(f.value)}
                   >
                     {f.label}
@@ -327,50 +334,54 @@ export default function DashboardPage() {
           ) : visibleCases.length === 0 ? (
             <EmptyState icon={Search} title="לא נמצאו תיקים תואמים" subtitle="נסו לשנות את החיפוש או הסינון" />
           ) : (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>
-                    <button type="button" className="sort-header" onClick={() => toggleSort("case_number")}>
-                      מספר תיק {sortIcon("case_number")}
-                    </button>
-                  </th>
-                  <th>
-                    <button type="button" className="sort-header" onClick={() => toggleSort("title")}>
-                      כותרת {sortIcon("title")}
-                    </button>
-                  </th>
-                  <th>
-                    <button type="button" className="sort-header" onClick={() => toggleSort("client")}>
-                      לקוח {sortIcon("client")}
-                    </button>
-                  </th>
-                  <th>
-                    <button type="button" className="sort-header" onClick={() => toggleSort("status")}>
-                      סטטוס {sortIcon("status")}
-                    </button>
-                  </th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleCases.map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.case_number}</td>
-                    <td>{c.title}</td>
-                    <td>{clientName(c.client_id)}</td>
-                    <td>
-                      <span className={`status-pill status-${c.status}`}>
-                        {CASE_STATUS_LABEL[c.status]}
-                      </span>
-                    </td>
-                    <td>
-                      <Link to={`/cases/${c.id}`}>פתיחת תיק</Link>
-                    </td>
+            <div className="table-scroll">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th scope="col" aria-sort={ariaSort("case_number")}>
+                      <button type="button" className="sort-header" onClick={() => toggleSort("case_number")}>
+                        מספר תיק {sortIcon("case_number")}
+                      </button>
+                    </th>
+                    <th scope="col" aria-sort={ariaSort("title")}>
+                      <button type="button" className="sort-header" onClick={() => toggleSort("title")}>
+                        כותרת {sortIcon("title")}
+                      </button>
+                    </th>
+                    <th scope="col" aria-sort={ariaSort("client")}>
+                      <button type="button" className="sort-header" onClick={() => toggleSort("client")}>
+                        לקוח {sortIcon("client")}
+                      </button>
+                    </th>
+                    <th scope="col" aria-sort={ariaSort("status")}>
+                      <button type="button" className="sort-header" onClick={() => toggleSort("status")}>
+                        סטטוס {sortIcon("status")}
+                      </button>
+                    </th>
+                    <th scope="col">
+                      <span className="visually-hidden">פעולות</span>
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {visibleCases.map((c) => (
+                    <tr key={c.id}>
+                      <td>{c.case_number}</td>
+                      <td>{c.title}</td>
+                      <td>{clientName(c.client_id)}</td>
+                      <td>
+                        <span className={`status-pill status-${c.status}`}>
+                          {CASE_STATUS_LABEL[c.status]}
+                        </span>
+                      </td>
+                      <td>
+                        <Link to={`/cases/${c.id}`}>פתיחת תיק</Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
 

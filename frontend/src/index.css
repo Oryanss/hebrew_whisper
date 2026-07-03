@@ -6,10 +6,51 @@
   --border: #d8d3c8;
   --danger: #a4342a;
   --success: #2f6b3f;
+  /* Secondary text that must still meet WCAG AA on --bg/--surface. */
+  --muted: #6b6459;
+  /* Accent used as *text/icon color* on --bg/--surface. Same as --accent in
+     light mode; dark mode lightens it (see [data-theme="dark"]) because the
+     raw accent hues fall below 4.5:1 on the dark surfaces. */
+  --accent-ink: var(--accent);
+  /* Status-pill palette. Pills used to hardcode light pastel backgrounds,
+     which stayed light in dark mode while their text colors flipped light
+     too (1.7-2.2:1). All pill-ish UI now reads these tokens. Every fg/bg
+     pair here and in the dark block passes WCAG AA (>= 4.5:1). */
+  --pill-green-bg: #e2f0e5;
+  --pill-green-fg: #2f6b3f;
+  --pill-amber-bg: #fdf2e3;
+  --pill-amber-fg: #7a601b;
+  --pill-red-bg: #f0e2e2;
+  --pill-red-fg: #a4342a;
+  --pill-rose-bg: #fbeceb;
+  --pill-orange-bg: #fbe4d0;
+  --pill-orange-fg: #9c470a;
+  --pill-neutral-bg: #eeeeee;
+  --pill-neutral-fg: #555555;
   --shadow-sm: 0 1px 2px rgba(35, 48, 58, 0.06);
   --shadow-md: 0 4px 14px rgba(35, 48, 58, 0.08);
   --heading-font: "Frank Ruhl Libre", "David", serif;
   font-family: "Assistant", "Heebo", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Visible keyboard-focus indicator for buttons/links/tabs (inputs keep their
+   border+ring treatment below). */
+:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 2px;
+}
+
+/* Screen-reader-only text (e.g. names for icon-only/blank table headers). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 * {
@@ -21,6 +62,13 @@ body {
   background: var(--bg);
   color: var(--ink);
   direction: rtl;
+}
+
+/* Content links (case links in tables/widgets, research sources) previously
+   fell back to the browser-default blue/purple, which is ~1.5:1 against the
+   dark surfaces. --accent-ink passes AA on both themes. */
+a {
+  color: var(--accent-ink);
 }
 
 h1,
@@ -44,7 +92,7 @@ h2 {
 
 h2 svg,
 h1 svg {
-  color: var(--accent);
+  color: var(--accent-ink);
   flex-shrink: 0;
 }
 
@@ -58,6 +106,8 @@ h1 svg {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
   padding: 0.75rem 1.5rem;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -75,12 +125,38 @@ h1 svg {
 }
 
 .brand svg {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .topbar nav {
   display: flex;
-  gap: 1.25rem;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    padding: 0.6rem 1rem;
+  }
+
+  .topbar nav {
+    gap: 0.15rem 0.25rem;
+  }
+
+  .nav-link {
+    padding: 0.4rem 0.55rem;
+    font-size: 0.88rem;
+  }
+
+  /* Avatar-only user menu button on narrow screens; the popover still shows
+     the full name + email. */
+  .user-menu-info {
+    display: none;
+  }
+
+  .content {
+    padding: 1rem;
+  }
 }
 
 .topbar nav a {
@@ -94,7 +170,7 @@ h1 svg {
 }
 
 .topbar nav a:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .user-box {
@@ -124,6 +200,8 @@ h1 svg {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
   margin-bottom: 1rem;
 }
 
@@ -141,6 +219,13 @@ h1 svg {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.25rem;
+}
+
+/* Grid items default to min-width: auto, so a wide child (table, long select)
+   silently forces the whole track - and the page - wider than the viewport.
+   Let columns shrink and the children adapt/scroll instead. */
+.two-col > * {
+  min-width: 0;
 }
 
 @media (max-width: 800px) {
@@ -162,6 +247,18 @@ h1 svg {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0 1rem;
+}
+
+@media (max-width: 640px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
 }
 
 input,
@@ -213,8 +310,9 @@ button:disabled {
 
 .link-button {
   background: none;
-  color: var(--accent);
-  padding: 0;
+  color: var(--accent-ink);
+  padding: 0.15rem 0;
+  min-height: 24px;
   font-weight: 600;
   text-decoration: underline;
   display: inline-flex;
@@ -225,6 +323,19 @@ button:disabled {
 .link-button:hover {
   background: none;
   color: var(--ink);
+}
+
+/* Wide tables (billing, invoices, meetings, cases) scroll inside this
+   container on narrow viewports instead of stretching the whole page.
+   contain: content is load-bearing: in RTL, Chromium still propagates the
+   table's leftward scrollable overflow to the document even through an
+   overflow-x: auto ancestor (verified empirically - even overflow-x: clip
+   doesn't stop it), which reintroduces page-level horizontal scroll.
+   Layout+paint containment does stop it, and inner scrolling keeps working. */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  contain: content;
 }
 
 .data-table {
@@ -240,7 +351,7 @@ button:disabled {
 .data-table th,
 .data-table td {
   padding: 0.65rem 0.9rem;
-  text-align: right;
+  text-align: start;
   border-bottom: 1px solid var(--border);
 }
 
@@ -262,57 +373,58 @@ button:disabled {
   border-radius: 999px;
   font-size: 0.8rem;
   font-weight: 700;
-  background: #eee;
+  background: var(--pill-neutral-bg);
+  color: var(--pill-neutral-fg);
 }
 
 .status-open {
-  background: #e2f0e5;
-  color: var(--success);
+  background: var(--pill-green-bg);
+  color: var(--pill-green-fg);
 }
 
 .status-pending {
-  background: #fdf2e3;
-  color: #8a6d1f;
+  background: var(--pill-amber-bg);
+  color: var(--pill-amber-fg);
 }
 
 .status-closed {
-  background: #f0e2e2;
-  color: var(--danger);
+  background: var(--pill-red-bg);
+  color: var(--pill-red-fg);
 }
 
 .deadline-pending {
-  background: #fdf2e3;
-  color: #8a6d1f;
+  background: var(--pill-amber-bg);
+  color: var(--pill-amber-fg);
 }
 
 .deadline-completed {
-  background: #e2f0e5;
-  color: var(--success);
+  background: var(--pill-green-bg);
+  color: var(--pill-green-fg);
 }
 
 .deadline-missed {
-  background: #f0e2e2;
-  color: var(--danger);
+  background: var(--pill-red-bg);
+  color: var(--pill-red-fg);
 }
 
 .risk-green {
-  background: #e2f0e5;
-  color: var(--success);
+  background: var(--pill-green-bg);
+  color: var(--pill-green-fg);
 }
 
 .risk-yellow {
-  background: #fdf2e3;
-  color: #8a6d1f;
+  background: var(--pill-amber-bg);
+  color: var(--pill-amber-fg);
 }
 
 .risk-orange {
-  background: #fbe4d0;
-  color: #b5540f;
+  background: var(--pill-orange-bg);
+  color: var(--pill-orange-fg);
 }
 
 .risk-red {
-  background: #fbe0de;
-  color: #a4342a;
+  background: var(--pill-red-bg);
+  color: var(--pill-red-fg);
   font-weight: 800;
 }
 
@@ -325,18 +437,18 @@ button:disabled {
 }
 
 .invoice-draft {
-  background: #eee;
-  color: #555;
+  background: var(--pill-neutral-bg);
+  color: var(--pill-neutral-fg);
 }
 
 .invoice-sent {
-  background: #fdf2e3;
-  color: #8a6d1f;
+  background: var(--pill-amber-bg);
+  color: var(--pill-amber-fg);
 }
 
 .invoice-paid {
-  background: #e2f0e5;
-  color: var(--success);
+  background: var(--pill-green-bg);
+  color: var(--pill-green-fg);
 }
 
 .error-text {
@@ -350,7 +462,7 @@ button:disabled {
 }
 
 .muted {
-  color: #6b6459;
+  color: var(--muted);
 }
 
 .small {
@@ -385,7 +497,6 @@ button:disabled {
 }
 
 .task-list input[type="checkbox"] {
-  width: auto;
   flex-shrink: 0;
 }
 
@@ -395,7 +506,7 @@ button:disabled {
 
 .task-done .task-title {
   text-decoration: line-through;
-  color: #6b6459;
+  color: var(--muted);
 }
 
 .doc-editor {
@@ -423,13 +534,13 @@ button:disabled {
 }
 
 .audit-result li.verified {
-  background: #e2f0e5;
-  color: var(--success);
+  background: var(--pill-green-bg);
+  color: var(--pill-green-fg);
 }
 
 .audit-result li.unverified {
-  background: #fbeceb;
-  color: var(--danger);
+  background: var(--pill-rose-bg);
+  color: var(--pill-red-fg);
 }
 
 .auth-page {
@@ -460,7 +571,7 @@ button:disabled {
 .auth-logo {
   display: flex;
   justify-content: center;
-  color: var(--accent);
+  color: var(--accent-ink);
   margin-bottom: 0.25rem;
 }
 
@@ -490,16 +601,21 @@ button:disabled {
   color: var(--ink);
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+  min-width: 24px;
+  min-height: 24px;
+  border-radius: 7px;
 }
 
 .accent-picker-toggle:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .accent-picker-popover {
   position: absolute;
   top: calc(100% + 0.5rem);
-  left: 0;
+  inset-inline-end: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -511,8 +627,8 @@ button:disabled {
 }
 
 .accent-swatch {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.6);
@@ -563,18 +679,18 @@ button:disabled {
 }
 
 .stat-icon.tone-emerald {
-  background: #e2f0e5;
-  color: var(--success);
+  background: var(--pill-green-bg);
+  color: var(--pill-green-fg);
 }
 
 .stat-icon.tone-amber {
-  background: #fdf2e3;
-  color: #8a6d1f;
+  background: var(--pill-amber-bg);
+  color: var(--pill-amber-fg);
 }
 
 .stat-icon.tone-rose {
-  background: #fbeceb;
-  color: var(--danger);
+  background: var(--pill-rose-bg);
+  color: var(--pill-red-fg);
 }
 
 .stat-value {
@@ -586,7 +702,7 @@ button:disabled {
 
 .stat-label {
   font-size: 0.78rem;
-  color: #6b6459;
+  color: var(--muted);
   margin-top: 0.25rem;
 }
 
@@ -594,7 +710,7 @@ button:disabled {
 .empty-state {
   text-align: center;
   padding: 2.5rem 1rem;
-  color: #9a9488;
+  color: var(--muted);
 }
 
 .empty-state svg {
@@ -604,7 +720,7 @@ button:disabled {
 
 .empty-state-title {
   font-weight: 600;
-  color: #6b6459;
+  color: var(--muted);
   margin: 0;
 }
 
@@ -650,8 +766,8 @@ button:disabled {
 }
 
 .tab-button.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
+  color: var(--accent-ink);
+  border-bottom-color: var(--accent-ink);
   background: none;
 }
 
@@ -672,7 +788,7 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  color: #6b6459;
+  color: var(--muted);
   text-decoration: none;
   font-weight: 600;
   padding: 0.45rem 0.85rem;
@@ -686,7 +802,7 @@ button:disabled {
 }
 
 .nav-link.active {
-  color: var(--accent);
+  color: var(--accent-ink);
   background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
@@ -737,12 +853,12 @@ button:disabled {
 
 .user-menu-role {
   font-size: 0.72rem;
-  color: #6b6459;
+  color: var(--muted);
   font-weight: 500;
 }
 
 .user-menu-chevron {
-  color: #6b6459;
+  color: var(--muted);
   transition: transform 0.15s ease;
   flex-shrink: 0;
 }
@@ -754,7 +870,7 @@ button:disabled {
 .user-menu-popover {
   position: absolute;
   top: calc(100% + 0.5rem);
-  left: 0;
+  inset-inline-end: 0;
   min-width: 200px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -784,7 +900,7 @@ button:disabled {
 }
 
 .user-menu-item:hover {
-  background: #fbeceb;
+  background: var(--pill-rose-bg);
 }
 
 /* Dashboard page header + layout */
@@ -794,7 +910,7 @@ button:disabled {
 
 .page-subtitle {
   margin: 0;
-  color: #6b6459;
+  color: var(--muted);
   font-size: 0.9rem;
 }
 
@@ -808,6 +924,13 @@ button:disabled {
   grid-template-columns: 2fr 1fr;
   gap: 1.25rem;
   align-items: start;
+}
+
+/* Same min-width: auto escape hatch as .two-col - without this the case
+   table's intrinsic width blows the single-column mobile layout past the
+   viewport. */
+.dashboard-layout > * {
+  min-width: 0;
 }
 
 @media (max-width: 900px) {
@@ -836,7 +959,7 @@ button:disabled {
   padding: 0.4rem 0.7rem;
   flex: 1;
   min-width: 220px;
-  color: #6b6459;
+  color: var(--muted);
 }
 
 .search-box input {
@@ -846,9 +969,16 @@ button:disabled {
   background: transparent;
 }
 
+/* The inner input suppresses its own ring, so the wrapper must show focus
+   instead - otherwise keyboard users get no indicator at all here. */
 .search-box input:focus {
   outline: none;
   box-shadow: none;
+}
+
+.search-box:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .status-filter-group {
@@ -882,7 +1012,8 @@ button:disabled {
   color: inherit;
   font-weight: inherit;
   font-size: inherit;
-  padding: 0;
+  padding: 0.25rem 0;
+  min-height: 24px;
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
@@ -890,7 +1021,7 @@ button:disabled {
 
 .sort-header:hover {
   background: none;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 /* Deadlines widget */
@@ -934,18 +1065,18 @@ button:disabled {
 
 .deadline-group-overdue .deadline-group-label,
 .deadline-group-urgent .deadline-group-label {
-  background: #fbeceb;
-  color: var(--danger);
+  background: var(--pill-rose-bg);
+  color: var(--pill-red-fg);
 }
 
 .deadline-group-soon .deadline-group-label {
-  background: #fdf2e3;
-  color: #8a6d1f;
+  background: var(--pill-amber-bg);
+  color: var(--pill-amber-fg);
 }
 
 .deadline-group-later .deadline-group-label {
-  background: #e2f0e5;
-  color: var(--success);
+  background: var(--pill-green-bg);
+  color: var(--pill-green-fg);
 }
 
 .deadline-group .doc-list li {
@@ -977,8 +1108,30 @@ button:disabled {
   --border: #3a4149;
   --danger: #e08578;
   --success: #7fc492;
+  /* #6b6459 (light-mode muted) is only ~2.5:1 on the dark surface. */
+  --muted: #a39b8e;
+  /* Raw accent presets are 2.5-3:1 as text on the dark surfaces; blending
+     55% accent with white keeps the hue and clears 4.5:1 for all presets. */
+  --accent-ink: color-mix(in srgb, var(--accent) 55%, white);
+  /* Dark pill palette - same hues, inverted luminance, all pairs >= 4.5:1. */
+  --pill-green-bg: #243b2c;
+  --pill-green-fg: #8fd0a2;
+  --pill-amber-bg: #3d331a;
+  --pill-amber-fg: #e3c27c;
+  --pill-red-bg: #452522;
+  --pill-red-fg: #eb9a8e;
+  --pill-rose-bg: #3a2320;
+  --pill-orange-bg: #40281a;
+  --pill-orange-fg: #f0a878;
+  --pill-neutral-bg: #33393f;
+  --pill-neutral-fg: #c9c4bb;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
   --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] .stat-icon.tone-slate {
+  background: #333a44;
+  color: #b8c2d0;
 }
 
 [data-theme="dark"] .data-table th {
@@ -1001,29 +1154,99 @@ button:disabled {
   color: #a4a8f2;
 }
 
-[data-theme="dark"] .status-pill {
-  background: #33393f;
-}
-
 /* Primary buttons use var(--ink) as their background, which is correct in
    light mode (dark ink on a white surface) but inverts to a near-white,
    illegible button once --ink becomes a light color in dark mode. Give
-   dark mode its own button treatment based on --accent instead. */
+   dark mode its own button treatment based on --accent instead. White text
+   clears 4.5:1 on every accent preset; the old near-black text was 3.45:1
+   on the default gold, so hover darkens rather than lightens. */
 [data-theme="dark"] button {
   background: var(--accent);
-  color: #1a1e24;
+  color: #ffffff;
 }
 
 [data-theme="dark"] button:hover {
-  background: color-mix(in srgb, var(--accent) 75%, white);
+  background: color-mix(in srgb, var(--accent) 85%, black);
 }
 
 [data-theme="dark"] .link-button {
   background: none;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 [data-theme="dark"] .link-button:hover {
+  background: none;
+  color: var(--ink);
+}
+
+/* The dark `button` rule above outweighs class-only selectors (attribute +
+   element beats a lone class), so every "transparent" button variant would
+   otherwise get an accent-colored slab background in dark mode (tabs, sort
+   headers, filter chips, the user-menu toggle...). Re-assert their intended
+   transparent/neutral treatments here. */
+[data-theme="dark"] .tab-button {
+  background: none;
+  color: var(--ink);
+}
+
+[data-theme="dark"] .tab-button:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--ink);
+}
+
+[data-theme="dark"] .tab-button.active {
+  background: none;
+  color: var(--accent-ink);
+}
+
+[data-theme="dark"] .sort-header {
+  background: none;
+  color: inherit;
+}
+
+[data-theme="dark"] .sort-header:hover {
+  background: none;
+  color: var(--accent-ink);
+}
+
+[data-theme="dark"] .status-filter-chip {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+[data-theme="dark"] .status-filter-chip:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+[data-theme="dark"] .status-filter-chip.active {
+  background: var(--accent);
+  color: white;
+}
+
+[data-theme="dark"] .user-menu-toggle {
+  background: none;
+  color: var(--ink);
+}
+
+[data-theme="dark"] .user-menu-toggle:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+[data-theme="dark"] .user-menu-item {
+  background: none;
+  color: var(--danger);
+}
+
+[data-theme="dark"] .user-menu-item:hover {
+  background: var(--pill-rose-bg);
+}
+
+[data-theme="dark"] .toast-close {
+  background: none;
+  color: inherit;
+}
+
+[data-theme="dark"] .toast-close:hover {
   background: none;
   color: var(--ink);
 }
@@ -1034,6 +1257,11 @@ button:disabled {
 .theme-toggle {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+  min-width: 24px;
+  min-height: 24px;
+  border-radius: 7px;
 }
 
 .auth-topbar {
@@ -1056,7 +1284,14 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  max-width: 340px;
+  max-width: min(340px, calc(100vw - 2rem));
+  /* The container is now always mounted (so the live region exists before
+     the first toast); don't let the empty box intercept taps. */
+  pointer-events: none;
+}
+
+.toast-container > * {
+  pointer-events: auto;
 }
 
 .toast {
@@ -1099,7 +1334,7 @@ button:disabled {
 }
 
 .toast-info svg {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .toast-message {
@@ -1108,7 +1343,12 @@ button:disabled {
 
 .toast-close {
   background: none;
-  padding: 0.15rem;
+  padding: 0.35rem;
+  min-width: 24px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: inherit;
   opacity: 0.6;
   flex-shrink: 0;
@@ -1120,14 +1360,16 @@ button:disabled {
   color: var(--ink);
 }
 
+/* Slide down instead of a physical translateX so the motion reads the same
+   in RTL and LTR. */
 @keyframes toast-in {
   from {
     opacity: 0;
-    transform: translateX(-16px);
+    transform: translateY(-8px);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
   }
 }
 
