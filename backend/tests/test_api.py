@@ -195,6 +195,107 @@ def test_deadline_lifecycle_and_upcoming(client, auth_headers):
     assert "הגשת כתב הגנה" not in [d["title"] for d in upcoming_after.json()]
 
 
+def test_meeting_lifecycle_and_upcoming(client, auth_headers):
+    from datetime import datetime, timedelta
+
+    client_resp = client.post(
+        "/api/clients", json={"full_name": "לקוח לפגישות"}, headers=auth_headers
+    )
+    client_id = client_resp.json()["id"]
+    case_resp = client.post(
+        "/api/cases",
+        json={"case_number": "T-MEETING-1", "title": "תיק פגישות", "client_id": client_id},
+        headers=auth_headers,
+    )
+    case_id = case_resp.json()["id"]
+
+    near_start = (datetime.utcnow() + timedelta(days=3)).isoformat()
+    far_start = (datetime.utcnow() + timedelta(days=90)).isoformat()
+    past_start = (datetime.utcnow() - timedelta(days=2)).isoformat()
+
+    near = client.post(
+        f"/api/cases/{case_id}/meetings",
+        json={
+            "title": "פגישה עם הלקוח",
+            "start_time": near_start,
+            "location": "משרד עורכי הדין",
+            "attendees": "עו\"ד ראשון, הלקוח",
+            "meeting_type": "client_meeting",
+        },
+        headers=auth_headers,
+    )
+    assert near.status_code == 201
+    assert near.json()["meeting_type"] == "client_meeting"
+    assert near.json()["location"] == "משרד עורכי הדין"
+
+    far = client.post(
+        f"/api/cases/{case_id}/meetings",
+        json={"title": "דיון הוכחות", "start_time": far_start, "meeting_type": "court_hearing"},
+        headers=auth_headers,
+    )
+    assert far.status_code == 201
+
+    past = client.post(
+        f"/api/cases/{case_id}/meetings",
+        json={"title": "פגישה שכבר התקיימה", "start_time": past_start},
+        headers=auth_headers,
+    )
+    assert past.status_code == 201
+    # default meeting_type when not provided
+    assert past.json()["meeting_type"] == "other"
+
+    listed = client.get(f"/api/cases/{case_id}/meetings", headers=auth_headers)
+    assert listed.status_code == 200
+    assert len(listed.json()) == 3
+
+    upcoming = client.get("/api/meetings/upcoming?days=14", headers=auth_headers)
+    assert upcoming.status_code == 200
+    upcoming_titles = [m["title"] for m in upcoming.json()]
+    assert "פגישה עם הלקוח" in upcoming_titles
+    assert "דיון הוכחות" not in upcoming_titles
+    assert "פגישה שכבר התקיימה" not in upcoming_titles
+    upcoming_row = next(m for m in upcoming.json() if m["title"] == "פגישה עם הלקוח")
+    assert upcoming_row["case_title"] == "תיק פגישות"
+    assert upcoming_row["case_number"] == "T-MEETING-1"
+
+    meeting_id = near.json()["id"]
+    updated = client.patch(
+        f"/api/meetings/{meeting_id}",
+        json={"location": "בזום", "notes": "עדכון לוח זמנים"},
+        headers=auth_headers,
+    )
+    assert updated.status_code == 200
+    assert updated.json()["location"] == "בזום"
+    assert updated.json()["notes"] == "עדכון לוח זמנים"
+    # unchanged fields stay intact after partial update
+    assert updated.json()["title"] == "פגישה עם הלקוח"
+
+    deleted = client.delete(f"/api/meetings/{meeting_id}", headers=auth_headers)
+    assert deleted.status_code == 204
+
+    listed_final = client.get(f"/api/cases/{case_id}/meetings", headers=auth_headers)
+    assert len(listed_final.json()) == 2
+
+
+def test_meeting_missing_case_and_meeting_404s(client, auth_headers):
+    resp = client.get("/api/cases/999999/meetings", headers=auth_headers)
+    assert resp.status_code == 404
+    resp = client.post(
+        "/api/cases/999999/meetings",
+        json={"title": "x", "start_time": "2026-01-01T10:00:00"},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 404
+
+    patched = client.patch(
+        "/api/meetings/999999", json={"title": "y"}, headers=auth_headers
+    )
+    assert patched.status_code == 404
+
+    deleted = client.delete("/api/meetings/999999", headers=auth_headers)
+    assert deleted.status_code == 404
+
+
 def test_time_entries_and_billing_summary(client, auth_headers):
     client_resp = client.post(
         "/api/clients", json={"full_name": "לקוח לחיוב שעות"}, headers=auth_headers

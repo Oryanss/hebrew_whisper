@@ -47,6 +47,14 @@ class InvoiceStatus(str, enum.Enum):
     PAID = "paid"
 
 
+class MeetingType(str, enum.Enum):
+    CLIENT_MEETING = "client_meeting"
+    COURT_HEARING = "court_hearing"
+    DEPOSITION = "deposition"
+    INTERNAL = "internal"
+    OTHER = "other"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -101,6 +109,7 @@ class Case(Base):
         "RiskAssessment", back_populates="case", cascade="all, delete-orphan"
     )
     tasks = relationship("Task", back_populates="case", cascade="all, delete-orphan")
+    meetings = relationship("Meeting", back_populates="case", cascade="all, delete-orphan")
 
 
 class Template(Base):
@@ -302,3 +311,24 @@ class Task(Base):
 
     case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
     case = relationship("Case", back_populates="tasks")
+
+
+class Meeting(Base):
+    """A scheduled meeting or event on a case - client meeting, court hearing,
+    deposition, internal strategy session, etc. Like Deadline, times are
+    entered manually by the lawyer."""
+
+    __tablename__ = "meetings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    start_time = Column(DateTime, nullable=False)
+    end_time = Column(DateTime, nullable=True)
+    location = Column(String, nullable=True)  # courtroom, office address, "video", etc.
+    attendees = Column(Text, nullable=True)  # free-text list of names/roles
+    notes = Column(Text, nullable=True)
+    meeting_type = Column(Enum(MeetingType), default=MeetingType.OTHER, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
+    case = relationship("Case", back_populates="meetings")

@@ -11,6 +11,7 @@ from .models import (
     DeadlineStatus,
     InvoiceStatus,
     RiskCategory,
+    MeetingType,
 )
 
 
@@ -160,6 +161,46 @@ class DeadlineOut(BaseModel):
 
 
 class DeadlineWithCaseOut(DeadlineOut):
+    case_title: str
+    case_number: str
+
+
+# --- Meeting (calendar / appointments) ---
+class MeetingCreate(BaseModel):
+    title: str
+    start_time: datetime
+    end_time: Optional[datetime] = None
+    location: Optional[str] = None
+    attendees: Optional[str] = None
+    notes: Optional[str] = None
+    meeting_type: MeetingType = MeetingType.OTHER
+
+
+class MeetingUpdate(BaseModel):
+    title: Optional[str] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    location: Optional[str] = None
+    attendees: Optional[str] = None
+    notes: Optional[str] = None
+    meeting_type: Optional[MeetingType] = None
+
+
+class MeetingOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    title: str
+    start_time: datetime
+    end_time: Optional[datetime] = None
+    location: Optional[str] = None
+    attendees: Optional[str] = None
+    notes: Optional[str] = None
+    meeting_type: MeetingType
+    created_at: datetime
+    case_id: int
+
+
+class MeetingWithCaseOut(MeetingOut):
     case_title: str
     case_number: str
 

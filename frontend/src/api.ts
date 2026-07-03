@@ -106,6 +106,8 @@ import type {
   Task,
   Invoice,
   InvoiceDetail,
+  Meeting,
+  MeetingWithCase,
 } from "./types";
 
 export const api = {
@@ -211,6 +213,15 @@ export const api = {
     }),
   deleteRiskAssessment: (id: number) =>
     request<void>(`/api/risk-assessments/${id}`, { method: "DELETE" }),
+
+  listCaseMeetings: (caseId: number) => request<Meeting[]>(`/api/cases/${caseId}/meetings`),
+  createMeeting: (caseId: number, data: object) =>
+    request<Meeting>(`/api/cases/${caseId}/meetings`, { method: "POST", body: data }),
+  updateMeeting: (id: number, data: object) =>
+    request<Meeting>(`/api/meetings/${id}`, { method: "PATCH", body: data }),
+  deleteMeeting: (id: number) => request<void>(`/api/meetings/${id}`, { method: "DELETE" }),
+  listUpcomingMeetings: (days = 14) =>
+    request<MeetingWithCase[]>(`/api/meetings/upcoming?days=${days}`),
 
   listCaseTasks: (caseId: number) => request<Task[]>(`/api/cases/${caseId}/tasks`),
   createTask: (caseId: number, data: object) =>

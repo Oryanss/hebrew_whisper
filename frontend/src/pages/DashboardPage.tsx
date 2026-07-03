@@ -17,7 +17,15 @@ import {
 import { api, ApiError } from "../api";
 import EmptyState from "../components/EmptyState";
 import StatCard from "../components/StatCard";
-import type { Case, CaseStatus, Client, DeadlineWithCase } from "../types";
+import type { Case, CaseStatus, Client, DeadlineWithCase, MeetingWithCase } from "../types";
+
+const MEETING_TYPE_LABEL: Record<string, string> = {
+  client_meeting: "פגישת לקוח",
+  court_hearing: "דיון בבית משפט",
+  deposition: "חקירה/גביית עדות",
+  internal: "פגישה פנימית",
+  other: "אחר",
+};
 
 const CASE_STATUS_LABEL: Record<CaseStatus, string> = {
   open: "פתוח",
@@ -49,6 +57,7 @@ export default function DashboardPage() {
   const [cases, setCases] = useState<Case[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [upcomingDeadlines, setUpcomingDeadlines] = useState<DeadlineWithCase[]>([]);
+  const [upcomingMeetings, setUpcomingMeetings] = useState<MeetingWithCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -60,11 +69,17 @@ export default function DashboardPage() {
 
   function reload() {
     setLoading(true);
-    Promise.all([api.listCases(), api.listClients(), api.listUpcomingDeadlines(14)])
-      .then(([c, cl, dl]) => {
+    Promise.all([
+      api.listCases(),
+      api.listClients(),
+      api.listUpcomingDeadlines(14),
+      api.listUpcomingMeetings(14),
+    ])
+      .then(([c, cl, dl, ml]) => {
         setCases(c);
         setClients(cl);
         setUpcomingDeadlines(dl);
+        setUpcomingMeetings(ml);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "שגיאה בטעינת נתונים"))
       .finally(() => setLoading(false));
@@ -159,6 +174,22 @@ export default function DashboardPage() {
     return groups;
   }, [upcomingDeadlines]);
 
+  const groupedMeetings = useMemo(() => {
+    const sorted = [...upcomingMeetings].sort(
+      (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+    );
+    const groups: Record<string, MeetingWithCase[]> = {
+      overdue: [],
+      urgent: [],
+      soon: [],
+      later: [],
+    };
+    for (const m of sorted) {
+      groups[urgencyOf(m.start_time).key].push(m);
+    }
+    return groups;
+  }, [upcomingMeetings]);
+
   function sortIcon(key: SortKey) {
     if (sortKey !== key) return <ArrowUpDown size={13} className="muted" />;
     return sortDir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />;
@@ -190,6 +221,12 @@ export default function DashboardPage() {
             value={upcomingDeadlines.length}
             label="מועדים ב-14 הימים הקרובים"
             tone="rose"
+          />
+          <StatCard
+            icon={CalendarClock}
+            value={upcomingMeetings.length}
+            label="פגישות ב-14 הימים הקרובים"
+            tone="indigo"
           />
           <StatCard icon={Users2} value={clients.length} label="לקוחות במערכת" tone="emerald" />
         </div>
@@ -360,6 +397,43 @@ export default function DashboardPage() {
                             </Link>
                             <span className="muted small deadline-date">
                               {new Date(d.due_date).toLocaleDateString("he-IL")}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  )
+                )}
+              </ul>
+            )}
+          </section>
+
+          <section className="card meetings-widget">
+            <h2>
+              <CalendarClock size={16} /> פגישות קרובות (14 יום)
+            </h2>
+            {!loading && upcomingMeetings.length === 0 ? (
+              <p className="muted small">אין פגישות קרובות בטווח הזמן הזה.</p>
+            ) : (
+              <ul className="deadline-groups">
+                {(["overdue", "urgent", "soon", "later"] as const).map((key) =>
+                  groupedMeetings[key].length === 0 ? null : (
+                    <li key={key} className={`deadline-group deadline-group-${key}`}>
+                      <div className="deadline-group-label">
+                        {urgencyIcon(key)} {urgencyLabel(key)}
+                      </div>
+                      <ul className="doc-list">
+                        {groupedMeetings[key].map((m) => (
+                          <li key={m.id}>
+                            <Link to={`/cases/${m.case_id}`}>
+                              {m.title} ({MEETING_TYPE_LABEL[m.meeting_type]}) - {m.case_title} (
+                              {m.case_number})
+                            </Link>
+                            <span className="muted small deadline-date">
+                              {new Date(m.start_time).toLocaleString("he-IL", {
+                                dateStyle: "short",
+                                timeStyle: "short",
+                              })}
                             </span>
                           </li>
                         ))}

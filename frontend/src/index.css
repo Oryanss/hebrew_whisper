@@ -899,6 +899,13 @@ button:disabled {
   top: 1.5rem;
 }
 
+/* Upcoming-meetings widget: sits below the (sticky) deadlines widget, reusing
+   the same urgency-grouped list styling (.deadline-groups / .deadline-group)
+   since the visual language is identical - just a different date field. */
+.meetings-widget {
+  margin-top: 1.25rem;
+}
+
 .deadline-groups {
   list-style: none;
   padding: 0;

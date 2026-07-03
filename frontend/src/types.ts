@@ -217,3 +217,28 @@ export interface Task {
   created_at: string;
   case_id: number;
 }
+
+export type MeetingType =
+  | "client_meeting"
+  | "court_hearing"
+  | "deposition"
+  | "internal"
+  | "other";
+
+export interface Meeting {
+  id: number;
+  title: string;
+  start_time: string;
+  end_time?: string | null;
+  location?: string | null;
+  attendees?: string | null;
+  notes?: string | null;
+  meeting_type: MeetingType;
+  created_at: string;
+  case_id: number;
+}
+
+export interface MeetingWithCase extends Meeting {
+  case_title: string;
+  case_number: string;
+}

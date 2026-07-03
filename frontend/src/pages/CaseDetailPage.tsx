@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import {
   AlertTriangle,
   BookOpen,
+  CalendarClock,
   Clock3,
   FileDown,
   FileText,
@@ -24,11 +25,20 @@ import type {
   Deadline,
   Invoice,
   LegalDocument,
+  Meeting,
   RiskAssessment,
   Task,
   Template,
   TimeEntry,
 } from "../types";
+
+const MEETING_TYPE_LABEL: Record<string, string> = {
+  client_meeting: "פגישת לקוח",
+  court_hearing: "דיון בבית משפט",
+  deposition: "חקירה/גביית עדות",
+  internal: "פגישה פנימית",
+  other: "אחר",
+};
 
 const DEADLINE_STATUS_LABEL: Record<string, string> = {
   pending: "פתוח",
@@ -82,7 +92,7 @@ const CASE_TABS: TabDef[] = [
   { id: "overview", label: "סקירה כללית", icon: Info },
   { id: "documents", label: "מסמכים וניסוח", icon: FileText },
   { id: "billing", label: "חיוב וחשבוניות", icon: Receipt },
-  { id: "tasks", label: "משימות ומועדים", icon: ListChecks },
+  { id: "tasks", label: "משימות, מועדים ופגישות", icon: ListChecks },
   { id: "journal", label: "יומן ותיעוד", icon: BookOpen },
 ];
 
@@ -97,6 +107,8 @@ export default function CaseDetailPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [authorities, setAuthorities] = useState<Authority[]>([]);
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [editingMeetingId, setEditingMeetingId] = useState<number | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
@@ -122,6 +134,7 @@ export default function CaseDetailPage() {
           tpls,
           auths,
           dls,
+          meetingList,
           entries,
           summary,
           caseNoteList,
@@ -134,6 +147,7 @@ export default function CaseDetailPage() {
           api.listTemplates(),
           api.listAuthorities(id),
           api.listCaseDeadlines(id),
+          api.listCaseMeetings(id),
           api.listTimeEntries(id),
           api.getBillingSummary(id),
           api.listCaseNotes(id),
@@ -146,6 +160,7 @@ export default function CaseDetailPage() {
         setTemplates(tpls);
         setAuthorities(auths);
         setDeadlines(dls);
+        setMeetings(meetingList);
         setTimeEntries(entries);
         setBillingSummary(summary);
         setCaseNotes(caseNoteList);
@@ -303,6 +318,77 @@ export default function CaseDetailPage() {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "שגיאה בעדכון מועד");
     }
+  }
+
+  async function handleAddMeeting(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
+    setError(null);
+    try {
+      const endRaw = form.get("end_time") as string;
+      const meeting = await api.createMeeting(id, {
+        title: form.get("title"),
+        start_time: new Date(form.get("start_time") as string).toISOString(),
+        end_time: endRaw ? new Date(endRaw).toISOString() : null,
+        location: form.get("location") || null,
+        attendees: form.get("attendees") || null,
+        notes: form.get("notes") || null,
+        meeting_type: form.get("meeting_type"),
+      });
+      setMeetings((prev) =>
+        [...prev, meeting].sort((a, b) => a.start_time.localeCompare(b.start_time))
+      );
+      formEl.reset();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "שגיאה בהוספת פגישה");
+    }
+  }
+
+  async function handleDeleteMeeting(meetingId: number) {
+    setError(null);
+    try {
+      await api.deleteMeeting(meetingId);
+      setMeetings((prev) => prev.filter((m) => m.id !== meetingId));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "שגיאה במחיקת פגישה");
+    }
+  }
+
+  async function handleUpdateMeeting(e: FormEvent<HTMLFormElement>, meetingId: number) {
+    e.preventDefault();
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
+    setError(null);
+    try {
+      const endRaw = form.get("end_time") as string;
+      const updated = await api.updateMeeting(meetingId, {
+        title: form.get("title"),
+        start_time: new Date(form.get("start_time") as string).toISOString(),
+        end_time: endRaw ? new Date(endRaw).toISOString() : null,
+        location: form.get("location") || null,
+        attendees: form.get("attendees") || null,
+        notes: form.get("notes") || null,
+        meeting_type: form.get("meeting_type"),
+      });
+      setMeetings((prev) =>
+        prev
+          .map((m) => (m.id === updated.id ? updated : m))
+          .sort((a, b) => a.start_time.localeCompare(b.start_time))
+      );
+      setEditingMeetingId(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "שגיאה בעדכון פגישה");
+    }
+  }
+
+  function toDatetimeLocal(value?: string | null): string {
+    if (!value) return "";
+    const d = new Date(value);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+      d.getHours()
+    )}:${pad(d.getMinutes())}`;
   }
 
   function sortTasks(list: Task[]): Task[] {
@@ -1034,6 +1120,179 @@ export default function CaseDetailPage() {
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+
+        <section className="card">
+          <h2>
+            <CalendarClock size={16} /> פגישות ואירועים
+          </h2>
+          <p className="muted small">
+            פגישות לקוח, דיונים בבית המשפט, חקירות ופגישות פנימיות - כולל מיקום ורשימת
+            משתתפים.
+          </p>
+          <form onSubmit={handleAddMeeting} className="form-card">
+            <div className="form-grid">
+              <label>
+                כותרת הפגישה
+                <input name="title" required placeholder="פגישת לקוח / דיון..." />
+              </label>
+              <label>
+                סוג פגישה
+                <select name="meeting_type" defaultValue="client_meeting">
+                  {Object.entries(MEETING_TYPE_LABEL).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                תחילה
+                <input name="start_time" type="datetime-local" required />
+              </label>
+              <label>
+                סיום (אופציונלי)
+                <input name="end_time" type="datetime-local" />
+              </label>
+              <label>
+                מיקום
+                <input name="location" placeholder="משרד / אולם דיונים / זום..." />
+              </label>
+              <label>
+                משתתפים
+                <input name="attendees" placeholder="עו&quot;ד ראשון, הלקוח..." />
+              </label>
+            </div>
+            <label>
+              הערות
+              <input name="notes" />
+            </label>
+            <button type="submit">הוספת פגישה</button>
+          </form>
+          {meetings.length === 0 ? (
+            <p className="muted small">אין פגישות רשומות בתיק זה.</p>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>כותרת</th>
+                  <th>סוג</th>
+                  <th>תחילה</th>
+                  <th>מיקום</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {meetings.map((m) =>
+                  editingMeetingId === m.id ? (
+                    <tr key={m.id}>
+                      <td colSpan={5}>
+                        <form
+                          onSubmit={(e) => handleUpdateMeeting(e, m.id)}
+                          className="form-card"
+                        >
+                          <div className="form-grid">
+                            <label>
+                              כותרת הפגישה
+                              <input name="title" required defaultValue={m.title} />
+                            </label>
+                            <label>
+                              סוג פגישה
+                              <select name="meeting_type" defaultValue={m.meeting_type}>
+                                {Object.entries(MEETING_TYPE_LABEL).map(([value, label]) => (
+                                  <option key={value} value={value}>
+                                    {label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <label>
+                              תחילה
+                              <input
+                                name="start_time"
+                                type="datetime-local"
+                                required
+                                defaultValue={toDatetimeLocal(m.start_time)}
+                              />
+                            </label>
+                            <label>
+                              סיום (אופציונלי)
+                              <input
+                                name="end_time"
+                                type="datetime-local"
+                                defaultValue={toDatetimeLocal(m.end_time)}
+                              />
+                            </label>
+                            <label>
+                              מיקום
+                              <input name="location" defaultValue={m.location ?? ""} />
+                            </label>
+                            <label>
+                              משתתפים
+                              <input name="attendees" defaultValue={m.attendees ?? ""} />
+                            </label>
+                          </div>
+                          <label>
+                            הערות
+                            <input name="notes" defaultValue={m.notes ?? ""} />
+                          </label>
+                          <div>
+                            <button type="submit">שמירת שינויים</button>{" "}
+                            <button
+                              type="button"
+                              className="link-button"
+                              onClick={() => setEditingMeetingId(null)}
+                            >
+                              ביטול
+                            </button>
+                          </div>
+                        </form>
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={m.id}>
+                      <td>
+                        {m.title}
+                        {m.attendees && <div className="muted small">{m.attendees}</div>}
+                        {m.notes && <div className="muted small">{m.notes}</div>}
+                      </td>
+                      <td>
+                        <span className="status-pill">{MEETING_TYPE_LABEL[m.meeting_type]}</span>
+                      </td>
+                      <td>
+                        {new Date(m.start_time).toLocaleString("he-IL")}
+                        {m.end_time && (
+                          <>
+                            {" "}
+                            -{" "}
+                            {new Date(m.end_time).toLocaleTimeString("he-IL", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </>
+                        )}
+                      </td>
+                      <td>{m.location ?? "-"}</td>
+                      <td>
+                        <button
+                          className="link-button"
+                          onClick={() => setEditingMeetingId(m.id)}
+                        >
+                          עריכה
+                        </button>{" "}
+                        <button
+                          className="link-button"
+                          onClick={() => handleDeleteMeeting(m.id)}
+                        >
+                          מחיקה
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                )}
               </tbody>
             </table>
           )}
