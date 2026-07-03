@@ -18,6 +18,7 @@ function initials(fullName: string): string {
 export default function UserMenu({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -29,10 +30,25 @@ export default function UserMenu({ user, onLogout }: { user: User; onLogout: () 
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Escape closes the menu and returns focus to the toggle button, per the
+  // ARIA menu-button pattern.
+  useEffect(() => {
+    if (!open) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+        toggleRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open]);
+
   return (
     <div className="user-menu" ref={rootRef}>
       <button
         type="button"
+        ref={toggleRef}
         className="user-menu-toggle"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="true"

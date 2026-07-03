@@ -89,26 +89,28 @@ export default function ClientsPage() {
       ) : clients.length === 0 ? (
         <EmptyState icon={Users} title="אין עדיין לקוחות במערכת" subtitle="לחצו על 'לקוח חדש' כדי להתחיל" />
       ) : (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>שם</th>
-              <th>ת"ז / ח"פ</th>
-              <th>טלפון</th>
-              <th>דוא"ל</th>
-            </tr>
-          </thead>
-          <tbody>
-            {clients.map((c) => (
-              <tr key={c.id}>
-                <td>{c.full_name}</td>
-                <td>{c.id_number ?? "-"}</td>
-                <td>{c.phone ?? "-"}</td>
-                <td>{c.email ?? "-"}</td>
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th scope="col">שם</th>
+                <th scope="col">ת"ז / ח"פ</th>
+                <th scope="col">טלפון</th>
+                <th scope="col">דוא"ל</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {clients.map((c) => (
+                <tr key={c.id}>
+                  <td>{c.full_name}</td>
+                  <td>{c.id_number ?? "-"}</td>
+                  <td>{c.phone ?? "-"}</td>
+                  <td>{c.email ?? "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

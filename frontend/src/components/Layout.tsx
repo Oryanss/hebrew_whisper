@@ -24,7 +24,7 @@ export default function Layout() {
           <Scale size={20} />
           <span>פלטפורמת ניהול תיקים משפטיים</span>
         </div>
-        <nav>
+        <nav aria-label="ניווט ראשי">
           {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
@@ -51,7 +51,7 @@ export default function Layout() {
           )}
         </div>
       </header>
-      <div className="disclaimer-banner">
+      <div className="disclaimer-banner" role="note">
         כלי זה הוא עוזר משפטי מבוסס בינה מלאכותית לתמיכה בעבודת עורך הדין בלבד. כל
         טיוטה, ניתוח או אסמכתה חייבים בבדיקה, אימות מול מקור מהימן ואישור של עורך דין
         מוסמך לפני כל שימוש או הסתמכות.

@@ -109,7 +109,7 @@ export default function ResearchPage() {
             <textarea name="query" rows={3} required placeholder="נסחו שאלה משפטית..." />
           </label>
           <label style={{ flexDirection: "row", alignItems: "center", gap: "0.4rem" }}>
-            <input name="use_library" type="checkbox" defaultChecked style={{ width: "auto" }} />
+            <input name="use_library" type="checkbox" defaultChecked />
             שימוש בספריית הידע כרקע למחקר
           </label>
           <button type="submit" disabled={researching}>
@@ -192,30 +192,34 @@ export default function ResearchPage() {
         ) : documents.length === 0 ? (
           <p className="muted small">אין עדיין מסמכים בספריית הידע.</p>
         ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>כותרת</th>
-                <th>קטגוריה</th>
-                <th>הועלה על ידי</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {documents.map((d) => (
-                <tr key={d.id}>
-                  <td>{d.title}</td>
-                  <td>{CATEGORY_LABEL[d.category] ?? d.category}</td>
-                  <td>{d.uploaded_by ?? "-"}</td>
-                  <td>
-                    <button className="link-button" onClick={() => handleDelete(d.id)}>
-                      מחיקה
-                    </button>
-                  </td>
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">כותרת</th>
+                  <th scope="col">קטגוריה</th>
+                  <th scope="col">הועלה על ידי</th>
+                  <th scope="col">
+                    <span className="visually-hidden">פעולות</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {documents.map((d) => (
+                  <tr key={d.id}>
+                    <td>{d.title}</td>
+                    <td>{CATEGORY_LABEL[d.category] ?? d.category}</td>
+                    <td>{d.uploaded_by ?? "-"}</td>
+                    <td>
+                      <button className="link-button" onClick={() => handleDelete(d.id)}>
+                        מחיקה
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </div>

@@ -14,8 +14,10 @@ export default function ToastContainer({
   toasts: ToastItem[];
   onDismiss: (id: number) => void;
 }) {
-  if (toasts.length === 0) return null;
-
+  // Always render the container: a live region only reliably announces
+  // content that is *added* to an already-mounted region, so mounting the
+  // region together with its first toast can be missed by screen readers.
+  // CSS gives the empty container pointer-events: none.
   return (
     <div className="toast-container" role="status" aria-live="polite">
       {toasts.map((t) => {
