@@ -1,0 +1,68 @@
+# LEGAL AI CONSTITUTION
+
+## Master Blueprint & Enterprise Reference Architecture
+
+מסמך-העל של הפלטפורמה: חוקת המערכת. המסמך מגדיר את הפילוסופיה, דרך החשיבה,
+המתודולוגיה והארכיטקטורה של מערכת ההפעלה המשפטית — **Legal Intelligence
+Operating System** — ללא תלות במודל AI מסוים, בשפת תכנות מסוימת או בספק
+תשתית מסוים. ה-AI הוא אמצעי; המוצר האמיתי הוא מערכת הפעלה אינטליגנטית
+למשרד עורכי דין. הטכנולוגיה עשויה להשתנות — העקרונות, המתודולוגיה
+והארכיטקטורה נשארים יציבים.
+
+## עקרון ארבע השכבות
+
+כל כרך במסמך נפתח תמיד בארבע שכבות קבועות, בסדר הזה:
+
+1. **Philosophy** — למה הרכיב קיים.
+2. **Principles** — אילו עקרונות מחייבים אותו.
+3. **Methodology** — כיצד עליו לפעול ברמה העקרונית.
+4. **Architecture** — כיצד הוא משתלב במערכת.
+
+ורק לאחר מכן: Responsibilities, Constraints, Ethics, Quality, Outputs,
+Success Criteria.
+
+## מבנה הכרכים
+
+| כרך | שם | תוכן | סטטוס |
+|------|-----|-------|--------|
+| א' | Constitutional Foundation | זהות, ייעוד, חזון, ערכים, אתיקה, עקרונות-על, גבולות סמכות | פרק 2 מלא; פרק 1 ממתין להשלמת הטקסט המקורי |
+| ב' | Enterprise Reasoning Framework | כיצד המערכת חושבת: אמת, ראיות, אי-ודאות, פרשנות, טיעון, החלטה, סיכון, אתיקה, הסבריות | טיוטה ראשונה |
+| ג' | Enterprise Methodology | מחזור החיים המחייב של כל משימה, מתודולוגיות עבודה, שיפור מתמיד | מלא |
+| ד' | Enterprise Architecture | שכבות, שירותים, רכיבים, תקשורת, אבטחה, תשתית | טיוטה ראשונה |
+| ה' | Enterprise Module Constitution | חוקת כל מודול, אחד-אחד, באותו פורמט | טיוטה ראשונה — 13 מודולים קיימים מתועדים |
+| ו' | AI Agent Constitution | הגדרת כל Agent — רק לאחר שהוגדרו חשיבה, עבודה ומבנה | טיוטה ראשונה — 3 סוכנים פעילים + תבנית כתב-סמכות |
+| ז' | Logical Model Constitution | המפה הלוגית של הידע | טיוטה ראשונה |
+| ח' | Data Constitution | כללי המידע (לא בסיס הנתונים) | טיוטה ראשונה |
+| ט' | Decision Constitution | מנוע קבלת ההחלטות | טיוטה ראשונה |
+| י' | Workflow Constitution | כל תהליכי העבודה | טיוטה ראשונה |
+| י"א | Quality Constitution | QA, Red Team, Audit, Peer Review, Regression | טיוטה ראשונה |
+| י"ב | Governance Constitution | החוקה הארגונית | טיוטה ראשונה |
+
+## קבצים
+
+- [כרך א' — Constitutional Foundation](volume-01-foundation.md)
+- [כרך ב' — Enterprise Reasoning Framework](volume-02-reasoning-framework.md)
+- [כרך ג' — Enterprise Methodology](volume-03-methodology.md)
+- [כרך ד' — Enterprise Architecture](volume-04-architecture.md)
+- [כרך ה' — Enterprise Module Constitution](volume-05-modules.md)
+- [כרך ו' — AI Agent Constitution](volume-06-agents.md)
+- [כרך ז' — Logical Model Constitution](volume-07-logical-model.md)
+- [כרך ח' — Data Constitution](volume-08-data.md)
+- [כרך ט' — Decision Constitution](volume-09-decision.md)
+- [כרך י' — Workflow Constitution](volume-10-workflows.md)
+- [כרך י"א — Quality Constitution](volume-11-quality.md)
+- [כרך י"ב — Governance Constitution](volume-12-governance.md)
+
+## הערת מספור
+
+פרקי כרך א' וכרך ג' משמרים את המספור הרציף המקורי שבו נכתבו (פרק 2, פרק 3)
+טרם שינוי מבנה הכרכים. החל מכרך ב' המספור הוא פנימי-לכרך. איחוד המספור
+ייעשה במהדורת עריכה מאוחדת, מבלי לשנות תוכן מהותי.
+
+## הקשר למימוש הנוכחי
+
+הפלטפורמה הקיימת בריפו זה (backend/, frontend/) היא מימוש ראשון של עקרונות
+החוקה — ובראשם עקרון אי-ההמצאה (בנק אסמכתאות מאומתות + ביקורת ציטוטים),
+עקרון Human-in-the-Loop (כל טיוטה מחייבת אישור עורך דין), ועקרון הזהירות
+(אין חישוב אוטומטי של מועדים סטטוטוריים). כל מודול עתידי חייב להיות ניתן
+למיפוי לחוקה זו.

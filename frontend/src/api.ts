@@ -24,15 +24,18 @@ interface RequestOptions {
   headers?: Record<string, string>;
   body?: unknown;
   form?: Record<string, string>;
+  formData?: FormData;
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+async function rawRequest(path: string, options: RequestOptions = {}): Promise<Response> {
   const headers: Record<string, string> = { ...options.headers };
   const token = getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   let body: BodyInit | undefined;
-  if (options.form) {
+  if (options.formData) {
+    body = options.formData; // browser sets multipart Content-Type + boundary
+  } else if (options.form) {
     body = new URLSearchParams(options.form);
   } else if (options.body !== undefined) {
     headers["Content-Type"] = "application/json";
@@ -50,8 +53,36 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     }
     throw new ApiError(res.status, detail);
   }
+  return res;
+}
+
+async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const res = await rawRequest(path, options);
   if (res.status === 204) return undefined as T;
   return res.json();
+}
+
+function filenameFromContentDisposition(header: string | null, fallback: string): string {
+  if (!header) return fallback;
+  const utf8Match = header.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match) return decodeURIComponent(utf8Match[1]);
+  const plainMatch = header.match(/filename="?([^";]+)"?/i);
+  return plainMatch ? plainMatch[1] : fallback;
+}
+
+async function downloadFile(path: string, fallbackFilename: string): Promise<void> {
+  const res = await rawRequest(path);
+  const blob = await res.blob();
+  const filename = filenameFromContentDisposition(
+    res.headers.get("Content-Disposition"),
+    fallbackFilename
+  );
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 import type {
@@ -67,8 +98,16 @@ import type {
   TimeEntry,
   BillingSummary,
   CaseNote,
+  KnowledgeDocumentMeta,
+  KnowledgeDocumentDetail,
+  KnowledgeSearchResult,
+  LegalResearchResult,
+  RiskAssessment,
+  Task,
   Invoice,
   InvoiceDetail,
+  Meeting,
+  MeetingWithCase,
 } from "./types";
 
 export const api = {
@@ -130,6 +169,67 @@ export const api = {
     request<CaseNote>(`/api/cases/${caseId}/notes`, { method: "POST", body: data }),
   deleteCaseNote: (id: number) => request<void>(`/api/notes/${id}`, { method: "DELETE" }),
 
+  uploadDocument: (caseId: number, title: string, docType: string, file: File) => {
+    const formData = new FormData();
+    formData.append("title", title);
+    formData.append("doc_type", docType);
+    formData.append("file", file);
+    return request<LegalDocument>(`/api/cases/${caseId}/documents/upload`, {
+      method: "POST",
+      formData,
+    });
+  },
+  downloadDocumentDocx: (documentId: number, title: string) =>
+    downloadFile(`/api/documents/${documentId}/export.docx`, `${title}.docx`),
+
+  listKnowledgeDocuments: (category?: string) =>
+    request<KnowledgeDocumentMeta[]>(`/api/knowledge${category ? `?category=${category}` : ""}`),
+  searchKnowledgeDocuments: (q: string) =>
+    request<KnowledgeSearchResult[]>(`/api/knowledge/search?q=${encodeURIComponent(q)}`),
+  getKnowledgeDocument: (id: number) =>
+    request<KnowledgeDocumentDetail>(`/api/knowledge/${id}`),
+  uploadKnowledgeDocument: (title: string, category: string, file: File) => {
+    const formData = new FormData();
+    formData.append("title", title);
+    formData.append("category", category);
+    formData.append("file", file);
+    return request<KnowledgeDocumentMeta>("/api/knowledge/upload", { method: "POST", formData });
+  },
+  deleteKnowledgeDocument: (id: number) =>
+    request<void>(`/api/knowledge/${id}`, { method: "DELETE" }),
+
+  runLegalResearch: (query: string, useKnowledgeLibrary = true) =>
+    request<LegalResearchResult>("/api/legal-research", {
+      method: "POST",
+      body: { query, use_knowledge_library: useKnowledgeLibrary },
+    }),
+
+  listRiskAssessments: (caseId: number) =>
+    request<RiskAssessment[]>(`/api/cases/${caseId}/risk-assessments`),
+  createRiskAssessment: (caseId: number, data: object) =>
+    request<RiskAssessment>(`/api/cases/${caseId}/risk-assessments`, {
+      method: "POST",
+      body: data,
+    }),
+  deleteRiskAssessment: (id: number) =>
+    request<void>(`/api/risk-assessments/${id}`, { method: "DELETE" }),
+
+  listCaseMeetings: (caseId: number) => request<Meeting[]>(`/api/cases/${caseId}/meetings`),
+  createMeeting: (caseId: number, data: object) =>
+    request<Meeting>(`/api/cases/${caseId}/meetings`, { method: "POST", body: data }),
+  updateMeeting: (id: number, data: object) =>
+    request<Meeting>(`/api/meetings/${id}`, { method: "PATCH", body: data }),
+  deleteMeeting: (id: number) => request<void>(`/api/meetings/${id}`, { method: "DELETE" }),
+  listUpcomingMeetings: (days = 14) =>
+    request<MeetingWithCase[]>(`/api/meetings/upcoming?days=${days}`),
+
+  listCaseTasks: (caseId: number) => request<Task[]>(`/api/cases/${caseId}/tasks`),
+  createTask: (caseId: number, data: object) =>
+    request<Task>(`/api/cases/${caseId}/tasks`, { method: "POST", body: data }),
+  updateTask: (id: number, data: object) =>
+    request<Task>(`/api/tasks/${id}`, { method: "PATCH", body: data }),
+  deleteTask: (id: number) => request<void>(`/api/tasks/${id}`, { method: "DELETE" }),
+
   listCaseInvoices: (caseId: number) => request<Invoice[]>(`/api/cases/${caseId}/invoices`),
   createInvoice: (caseId: number, data: object = {}) =>
     request<Invoice>(`/api/cases/${caseId}/invoices`, { method: "POST", body: data }),
@@ -137,6 +237,8 @@ export const api = {
   updateInvoice: (id: number, data: object) =>
     request<Invoice>(`/api/invoices/${id}`, { method: "PATCH", body: data }),
   deleteInvoice: (id: number) => request<void>(`/api/invoices/${id}`, { method: "DELETE" }),
+  downloadInvoiceDocx: (invoiceId: number, invoiceNumber: string) =>
+    downloadFile(`/api/invoices/${invoiceId}/export.docx`, `${invoiceNumber}.docx`),
 };
 
 export { request };

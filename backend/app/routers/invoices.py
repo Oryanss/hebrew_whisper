@@ -1,10 +1,12 @@
 from typing import List
+from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from .. import models, schemas, security
 from ..database import get_db
+from ..docx_utils import build_invoice_docx
 
 router = APIRouter(
     prefix="/api/cases/{case_id}/invoices",
@@ -79,6 +81,32 @@ def get_invoice(invoice_id: int, db: Session = Depends(get_db)):
     if not invoice:
         raise HTTPException(status_code=404, detail="חשבונית לא נמצאה")
     return invoice
+
+
+@standalone_router.get("/{invoice_id}/export.docx")
+def export_invoice_docx(invoice_id: int, db: Session = Depends(get_db)):
+    invoice = db.query(models.Invoice).filter(models.Invoice.id == invoice_id).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="חשבונית לא נמצאה")
+    case = invoice.case
+    docx_bytes = build_invoice_docx(invoice, case, case.client)
+
+    filename = f"חשבונית {invoice.invoice_number}.docx"
+    ascii_fallback = "".join(
+        c for c in invoice.invoice_number if c.isascii() and (c.isalnum() or c in " -_")
+    )
+    ascii_fallback = ascii_fallback.strip() or "invoice"
+    encoded_filename = quote(filename)
+    return Response(
+        content=docx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="invoice-{ascii_fallback}.docx"; '
+                f"filename*=UTF-8''{encoded_filename}"
+            )
+        },
+    )
 
 
 @standalone_router.patch("/{invoice_id}", response_model=schemas.InvoiceOut)

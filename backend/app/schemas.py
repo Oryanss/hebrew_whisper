@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, Field
 
 from .models import (
     UserRole,
@@ -10,6 +10,8 @@ from .models import (
     AuthoritySourceDb,
     DeadlineStatus,
     InvoiceStatus,
+    RiskCategory,
+    MeetingType,
 )
 
 
@@ -163,6 +165,46 @@ class DeadlineWithCaseOut(DeadlineOut):
     case_number: str
 
 
+# --- Meeting (calendar / appointments) ---
+class MeetingCreate(BaseModel):
+    title: str
+    start_time: datetime
+    end_time: Optional[datetime] = None
+    location: Optional[str] = None
+    attendees: Optional[str] = None
+    notes: Optional[str] = None
+    meeting_type: MeetingType = MeetingType.OTHER
+
+
+class MeetingUpdate(BaseModel):
+    title: Optional[str] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    location: Optional[str] = None
+    attendees: Optional[str] = None
+    notes: Optional[str] = None
+    meeting_type: Optional[MeetingType] = None
+
+
+class MeetingOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    title: str
+    start_time: datetime
+    end_time: Optional[datetime] = None
+    location: Optional[str] = None
+    attendees: Optional[str] = None
+    notes: Optional[str] = None
+    meeting_type: MeetingType
+    created_at: datetime
+    case_id: int
+
+
+class MeetingWithCaseOut(MeetingOut):
+    case_title: str
+    case_number: str
+
+
 # --- Time & billing ---
 class TimeEntryCreate(BaseModel):
     description: str
@@ -236,6 +278,95 @@ class CaseNoteOut(BaseModel):
     id: int
     content: str
     created_by: Optional[str] = None
+    created_at: datetime
+    case_id: int
+
+
+# --- Knowledge library ---
+class KnowledgeDocumentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    title: str
+    category: str
+    source_filename: Optional[str] = None
+    uploaded_by: Optional[str] = None
+    created_at: datetime
+
+
+class KnowledgeDocumentDetail(KnowledgeDocumentOut):
+    content: str
+
+
+class KnowledgeSearchResult(BaseModel):
+    id: int
+    title: str
+    category: str
+    snippet: str
+
+
+# --- Legal research ---
+class LegalResearchRequest(BaseModel):
+    query: str
+    use_knowledge_library: bool = True
+
+
+class ResearchSource(BaseModel):
+    title: Optional[str] = None
+    url: Optional[str] = None
+
+
+class LegalResearchResult(BaseModel):
+    answer: str
+    web_sources: list[ResearchSource]
+    knowledge_references: list[KnowledgeDocumentOut]
+
+
+# --- Risk assessment ---
+class RiskAssessmentCreate(BaseModel):
+    category: RiskCategory = RiskCategory.OTHER
+    description: str
+    severity: int = Field(ge=1, le=5)
+    likelihood: int = Field(ge=1, le=5)
+    mitigating_factors: Optional[str] = None
+
+
+class RiskAssessmentOut(BaseModel):
+    id: int
+    category: RiskCategory
+    description: str
+    severity: int
+    likelihood: int
+    risk_score: int
+    risk_level: str
+    recommended_action: str
+    mitigating_factors: Optional[str] = None
+    assessed_by: Optional[str] = None
+    created_at: datetime
+    case_id: int
+
+
+# --- Task (workflow checklist) ---
+class TaskCreate(BaseModel):
+    title: str
+    notes: Optional[str] = None
+    due_date: Optional[datetime] = None
+    done: bool = False
+
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    notes: Optional[str] = None
+    due_date: Optional[datetime] = None
+    done: Optional[bool] = None
+
+
+class TaskOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    title: str
+    notes: Optional[str] = None
+    done: bool
+    due_date: Optional[datetime] = None
     created_at: datetime
     case_id: int
 

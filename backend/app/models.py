@@ -47,6 +47,14 @@ class InvoiceStatus(str, enum.Enum):
     PAID = "paid"
 
 
+class MeetingType(str, enum.Enum):
+    CLIENT_MEETING = "client_meeting"
+    COURT_HEARING = "court_hearing"
+    DEPOSITION = "deposition"
+    INTERNAL = "internal"
+    OTHER = "other"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -97,6 +105,11 @@ class Case(Base):
     notes = relationship(
         "CaseNote", back_populates="case", cascade="all, delete-orphan", order_by="CaseNote.created_at"
     )
+    risk_assessments = relationship(
+        "RiskAssessment", back_populates="case", cascade="all, delete-orphan"
+    )
+    tasks = relationship("Task", back_populates="case", cascade="all, delete-orphan")
+    meetings = relationship("Meeting", back_populates="case", cascade="all, delete-orphan")
 
 
 class Template(Base):
@@ -232,3 +245,90 @@ class CaseNote(Base):
 
     case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
     case = relationship("Case", back_populates="notes")
+
+
+class KnowledgeDocument(Base):
+    """A firm-wide reference document (case-law example, article, treatise
+    excerpt, internal memo template, etc) uploaded to ground the legal
+    research and drafting assistants in the firm's own material, in addition
+    to the verified Authority bank."""
+
+    __tablename__ = "knowledge_documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    category = Column(String, nullable=False)  # case_law / article / literature / other
+    content = Column(Text, nullable=False)
+    source_filename = Column(String, nullable=True)
+    uploaded_by = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class RiskCategory(str, enum.Enum):
+    CONTRACT = "contract"
+    REGULATORY = "regulatory"
+    LITIGATION = "litigation"
+    IP = "ip"
+    DATA_PRIVACY = "data_privacy"
+    EMPLOYMENT = "employment"
+    CORPORATE = "corporate"
+    OTHER = "other"
+
+
+class RiskAssessment(Base):
+    """A severity x likelihood legal risk assessment for a case. The score
+    and escalation guidance are derived (not stored) from severity/likelihood
+    by app.risk_scoring, so the banding logic lives in one place."""
+
+    __tablename__ = "risk_assessments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    category = Column(Enum(RiskCategory), default=RiskCategory.OTHER, nullable=False)
+    description = Column(Text, nullable=False)
+    severity = Column(Integer, nullable=False)  # 1 (negligible) - 5 (critical)
+    likelihood = Column(Integer, nullable=False)  # 1 (remote) - 5 (almost certain)
+    mitigating_factors = Column(Text, nullable=True)
+    assessed_by = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
+    case = relationship("Case", back_populates="risk_assessments")
+
+
+class Task(Base):
+    """A lightweight action item on a case - not necessarily date-critical,
+    unlike Deadline. Simple to-do checklist entries such as 'send draft
+    agreement to client for approval'."""
+
+    __tablename__ = "tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    notes = Column(Text, nullable=True)
+    done = Column(Boolean, default=False, nullable=False)
+    due_date = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
+    case = relationship("Case", back_populates="tasks")
+
+
+class Meeting(Base):
+    """A scheduled meeting or event on a case - client meeting, court hearing,
+    deposition, internal strategy session, etc. Like Deadline, times are
+    entered manually by the lawyer."""
+
+    __tablename__ = "meetings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    start_time = Column(DateTime, nullable=False)
+    end_time = Column(DateTime, nullable=True)
+    location = Column(String, nullable=True)  # courtroom, office address, "video", etc.
+    attendees = Column(Text, nullable=True)  # free-text list of names/roles
+    notes = Column(Text, nullable=True)
+    meeting_type = Column(Enum(MeetingType), default=MeetingType.OTHER, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
+    case = relationship("Case", back_populates="meetings")

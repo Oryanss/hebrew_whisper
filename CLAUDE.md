@@ -129,6 +129,9 @@ linked from a `Document` via `template_id`. Key fields worth knowing:
   /api/cases/{case_id}/invoices` snapshots them into a new invoice (400 if none qualify) and
   stamps each entry's `invoice_id`, so an entry can only ever belong to one invoice. Deleting an
   invoice clears `invoice_id` back to null on its entries rather than deleting them.
+  `GET /api/invoices/{id}/export.docx` renders any invoice as a downloadable Word file via
+  `docx_utils.build_invoice_docx` (same RFC 5987 Hebrew-filename handling as the document
+  export endpoint).
 
 ### Anti-hallucination controls (don't weaken these)
 

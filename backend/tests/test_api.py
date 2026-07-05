@@ -195,6 +195,107 @@ def test_deadline_lifecycle_and_upcoming(client, auth_headers):
     assert "הגשת כתב הגנה" not in [d["title"] for d in upcoming_after.json()]
 
 
+def test_meeting_lifecycle_and_upcoming(client, auth_headers):
+    from datetime import datetime, timedelta
+
+    client_resp = client.post(
+        "/api/clients", json={"full_name": "לקוח לפגישות"}, headers=auth_headers
+    )
+    client_id = client_resp.json()["id"]
+    case_resp = client.post(
+        "/api/cases",
+        json={"case_number": "T-MEETING-1", "title": "תיק פגישות", "client_id": client_id},
+        headers=auth_headers,
+    )
+    case_id = case_resp.json()["id"]
+
+    near_start = (datetime.utcnow() + timedelta(days=3)).isoformat()
+    far_start = (datetime.utcnow() + timedelta(days=90)).isoformat()
+    past_start = (datetime.utcnow() - timedelta(days=2)).isoformat()
+
+    near = client.post(
+        f"/api/cases/{case_id}/meetings",
+        json={
+            "title": "פגישה עם הלקוח",
+            "start_time": near_start,
+            "location": "משרד עורכי הדין",
+            "attendees": "עו\"ד ראשון, הלקוח",
+            "meeting_type": "client_meeting",
+        },
+        headers=auth_headers,
+    )
+    assert near.status_code == 201
+    assert near.json()["meeting_type"] == "client_meeting"
+    assert near.json()["location"] == "משרד עורכי הדין"
+
+    far = client.post(
+        f"/api/cases/{case_id}/meetings",
+        json={"title": "דיון הוכחות", "start_time": far_start, "meeting_type": "court_hearing"},
+        headers=auth_headers,
+    )
+    assert far.status_code == 201
+
+    past = client.post(
+        f"/api/cases/{case_id}/meetings",
+        json={"title": "פגישה שכבר התקיימה", "start_time": past_start},
+        headers=auth_headers,
+    )
+    assert past.status_code == 201
+    # default meeting_type when not provided
+    assert past.json()["meeting_type"] == "other"
+
+    listed = client.get(f"/api/cases/{case_id}/meetings", headers=auth_headers)
+    assert listed.status_code == 200
+    assert len(listed.json()) == 3
+
+    upcoming = client.get("/api/meetings/upcoming?days=14", headers=auth_headers)
+    assert upcoming.status_code == 200
+    upcoming_titles = [m["title"] for m in upcoming.json()]
+    assert "פגישה עם הלקוח" in upcoming_titles
+    assert "דיון הוכחות" not in upcoming_titles
+    assert "פגישה שכבר התקיימה" not in upcoming_titles
+    upcoming_row = next(m for m in upcoming.json() if m["title"] == "פגישה עם הלקוח")
+    assert upcoming_row["case_title"] == "תיק פגישות"
+    assert upcoming_row["case_number"] == "T-MEETING-1"
+
+    meeting_id = near.json()["id"]
+    updated = client.patch(
+        f"/api/meetings/{meeting_id}",
+        json={"location": "בזום", "notes": "עדכון לוח זמנים"},
+        headers=auth_headers,
+    )
+    assert updated.status_code == 200
+    assert updated.json()["location"] == "בזום"
+    assert updated.json()["notes"] == "עדכון לוח זמנים"
+    # unchanged fields stay intact after partial update
+    assert updated.json()["title"] == "פגישה עם הלקוח"
+
+    deleted = client.delete(f"/api/meetings/{meeting_id}", headers=auth_headers)
+    assert deleted.status_code == 204
+
+    listed_final = client.get(f"/api/cases/{case_id}/meetings", headers=auth_headers)
+    assert len(listed_final.json()) == 2
+
+
+def test_meeting_missing_case_and_meeting_404s(client, auth_headers):
+    resp = client.get("/api/cases/999999/meetings", headers=auth_headers)
+    assert resp.status_code == 404
+    resp = client.post(
+        "/api/cases/999999/meetings",
+        json={"title": "x", "start_time": "2026-01-01T10:00:00"},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 404
+
+    patched = client.patch(
+        "/api/meetings/999999", json={"title": "y"}, headers=auth_headers
+    )
+    assert patched.status_code == 404
+
+    deleted = client.delete("/api/meetings/999999", headers=auth_headers)
+    assert deleted.status_code == 404
+
+
 def test_time_entries_and_billing_summary(client, auth_headers):
     client_resp = client.post(
         "/api/clients", json={"full_name": "לקוח לחיוב שעות"}, headers=auth_headers
@@ -315,6 +416,199 @@ def test_case_notes_missing_case_404s(client, auth_headers):
     assert resp.status_code == 404
 
 
+def _make_docx_bytes(paragraphs):
+    import io
+
+    from docx import Document as DocxDocument
+
+    docx = DocxDocument()
+    for p in paragraphs:
+        docx.add_paragraph(p)
+    buffer = io.BytesIO()
+    docx.save(buffer)
+    return buffer.getvalue()
+
+
+def test_upload_and_export_docx(client, auth_headers):
+    client_resp = client.post(
+        "/api/clients", json={"full_name": "לקוח למסמכי וורד"}, headers=auth_headers
+    )
+    client_id = client_resp.json()["id"]
+    case_resp = client.post(
+        "/api/cases",
+        json={"case_number": "T-DOCX-1", "title": "תיק מסמכי וורד", "client_id": client_id},
+        headers=auth_headers,
+    )
+    case_id = case_resp.json()["id"]
+
+    docx_bytes = _make_docx_bytes(["שורה ראשונה", "שורה שנייה"])
+    uploaded = client.post(
+        f"/api/cases/{case_id}/documents/upload",
+        data={"title": "כתב תביעה שהתקבל", "doc_type": "כתב תביעה"},
+        files={
+            "file": (
+                "claim.docx",
+                docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+        headers=auth_headers,
+    )
+    assert uploaded.status_code == 201
+    body = uploaded.json()
+    assert "שורה ראשונה" in body["content"]
+    assert "שורה שנייה" in body["content"]
+    assert body["status"] == "in_review"
+
+    # wrong extension is rejected
+    rejected = client.post(
+        f"/api/cases/{case_id}/documents/upload",
+        data={"title": "קובץ שגוי", "doc_type": "אחר"},
+        files={"file": ("claim.txt", b"not a docx", "text/plain")},
+        headers=auth_headers,
+    )
+    assert rejected.status_code == 400
+
+    document_id = body["id"]
+    exported = client.get(f"/api/documents/{document_id}/export.docx", headers=auth_headers)
+    assert exported.status_code == 200
+    assert (
+        exported.headers["content-type"]
+        == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+    assert len(exported.content) > 0
+
+
+def test_knowledge_library_upload_search_and_delete(client, auth_headers):
+    txt_upload = client.post(
+        "/api/knowledge/upload",
+        data={"title": "מאמר על התיישנות", "category": "article"},
+        files={"file": ("article.txt", "דיון מקיף בסוגיית ההתיישנות בדין הישראלי".encode("utf-8"), "text/plain")},
+        headers=auth_headers,
+    )
+    assert txt_upload.status_code == 201
+    doc_id = txt_upload.json()["id"]
+    assert "content" not in txt_upload.json()  # list/create responses omit full content
+
+    docx_bytes = _make_docx_bytes(["פסק דין לדוגמה", "נקבע כי יש לדחות את הערעור"])
+    docx_upload = client.post(
+        "/api/knowledge/upload",
+        data={"title": "פסק דין לדוגמה", "category": "case_law"},
+        files={
+            "file": (
+                "example.docx",
+                docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+        headers=auth_headers,
+    )
+    assert docx_upload.status_code == 201
+
+    unsupported = client.post(
+        "/api/knowledge/upload",
+        data={"title": "קובץ לא נתמך", "category": "other"},
+        files={"file": ("image.png", b"\x89PNG", "image/png")},
+        headers=auth_headers,
+    )
+    assert unsupported.status_code == 400
+
+    listed = client.get("/api/knowledge", headers=auth_headers)
+    assert listed.status_code == 200
+    assert len(listed.json()) >= 2
+
+    filtered = client.get("/api/knowledge?category=case_law", headers=auth_headers)
+    assert all(d["category"] == "case_law" for d in filtered.json())
+
+    searched = client.get("/api/knowledge/search?q=התיישנות", headers=auth_headers)
+    assert searched.status_code == 200
+    assert any("התיישנות" in r["snippet"] for r in searched.json())
+
+    detail = client.get(f"/api/knowledge/{doc_id}", headers=auth_headers)
+    assert detail.status_code == 200
+    assert "content" in detail.json()
+
+    deleted = client.delete(f"/api/knowledge/{doc_id}", headers=auth_headers)
+    assert deleted.status_code == 204
+    missing = client.get(f"/api/knowledge/{doc_id}", headers=auth_headers)
+    assert missing.status_code == 404
+
+
+def test_legal_research_without_api_key_returns_503(client, auth_headers):
+    resp = client.post(
+        "/api/legal-research",
+        json={"query": "מהי ההלכה לגבי התיישנות בתביעת חוב?"},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 503
+    assert "ANTHROPIC_API_KEY" in resp.json()["detail"]
+
+
+def test_risk_assessment_scoring_and_lifecycle(client, auth_headers):
+    client_resp = client.post(
+        "/api/clients", json={"full_name": "לקוח להערכת סיכון"}, headers=auth_headers
+    )
+    client_id = client_resp.json()["id"]
+    case_resp = client.post(
+        "/api/cases",
+        json={"case_number": "T-RISK-1", "title": "תיק הערכת סיכון", "client_id": client_id},
+        headers=auth_headers,
+    )
+    case_id = case_resp.json()["id"]
+
+    low = client.post(
+        f"/api/cases/{case_id}/risk-assessments",
+        json={
+            "category": "contract",
+            "description": "סטייה קלה מנוסח סטנדרטי בחוזה ספק",
+            "severity": 1,
+            "likelihood": 2,
+        },
+        headers=auth_headers,
+    )
+    assert low.status_code == 201
+    low_body = low.json()
+    assert low_body["risk_score"] == 2
+    assert low_body["risk_level"] == "green"
+    assert low_body["assessed_by"]
+
+    critical = client.post(
+        f"/api/cases/{case_id}/risk-assessments",
+        json={
+            "category": "litigation",
+            "description": "תביעה פעילה עם חשיפה כספית משמעותית",
+            "severity": 5,
+            "likelihood": 4,
+        },
+        headers=auth_headers,
+    )
+    assert critical.status_code == 201
+    critical_body = critical.json()
+    assert critical_body["risk_score"] == 20
+    assert critical_body["risk_level"] == "red"
+    assert "הסלמה מיידית" in critical_body["recommended_action"]
+
+    listed = client.get(f"/api/cases/{case_id}/risk-assessments", headers=auth_headers)
+    assert listed.status_code == 200
+    assert len(listed.json()) == 2
+    # newest first
+    assert listed.json()[0]["id"] == critical_body["id"]
+
+    invalid = client.post(
+        f"/api/cases/{case_id}/risk-assessments",
+        json={"description": "ציון לא חוקי", "severity": 6, "likelihood": 3},
+        headers=auth_headers,
+    )
+    assert invalid.status_code == 422
+
+    deleted = client.delete(
+        f"/api/risk-assessments/{low_body['id']}", headers=auth_headers
+    )
+    assert deleted.status_code == 204
+    listed_after = client.get(f"/api/cases/{case_id}/risk-assessments", headers=auth_headers)
+    assert len(listed_after.json()) == 1
+
+
 def test_invoice_generation_lifecycle(client, auth_headers):
     client_resp = client.post(
         "/api/clients", json={"full_name": "לקוח לחשבונית"}, headers=auth_headers
@@ -402,6 +696,14 @@ def test_invoice_generation_lifecycle(client, auth_headers):
     assert updated.status_code == 200
     assert updated.json()["status"] == "paid"
 
+    exported = client.get(f"/api/invoices/{invoice['id']}/export.docx", headers=auth_headers)
+    assert exported.status_code == 200
+    assert (
+        exported.headers["content-type"]
+        == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+    assert len(exported.content) > 0
+
     deleted = client.delete(f"/api/invoices/{invoice['id']}", headers=auth_headers)
     assert deleted.status_code == 204
 
@@ -416,3 +718,88 @@ def test_invoices_missing_case_404s(client, auth_headers):
     assert resp.status_code == 404
     resp = client.post("/api/cases/999999/invoices", json={}, headers=auth_headers)
     assert resp.status_code == 404
+
+
+def test_invoice_export_docx_missing_invoice_404s(client, auth_headers):
+    resp = client.get("/api/invoices/999999/export.docx", headers=auth_headers)
+    assert resp.status_code == 404
+
+
+def test_task_lifecycle(client, auth_headers):
+    from datetime import datetime, timedelta
+
+    client_resp = client.post(
+        "/api/clients", json={"full_name": "לקוח למשימות"}, headers=auth_headers
+    )
+    client_id = client_resp.json()["id"]
+    case_resp = client.post(
+        "/api/cases",
+        json={"case_number": "T-TASKS-1", "title": "תיק משימות", "client_id": client_id},
+        headers=auth_headers,
+    )
+    case_id = case_resp.json()["id"]
+
+    empty = client.get(f"/api/cases/{case_id}/tasks", headers=auth_headers)
+    assert empty.status_code == 200
+    assert empty.json() == []
+
+    due = (datetime.utcnow() + timedelta(days=5)).isoformat()
+    created = client.post(
+        f"/api/cases/{case_id}/tasks",
+        json={"title": "לשלוח טיוטת הסכם ללקוח לאישור", "due_date": due},
+        headers=auth_headers,
+    )
+    assert created.status_code == 201
+    task_body = created.json()
+    assert task_body["title"] == "לשלוח טיוטת הסכם ללקוח לאישור"
+    assert task_body["done"] is False
+    assert task_body["case_id"] == case_id
+
+    no_due = client.post(
+        f"/api/cases/{case_id}/tasks",
+        json={"title": "להזמין תמלול פרוטוקול"},
+        headers=auth_headers,
+    )
+    assert no_due.status_code == 201
+    assert no_due.json()["due_date"] is None
+
+    listed = client.get(f"/api/cases/{case_id}/tasks", headers=auth_headers)
+    assert listed.status_code == 200
+    assert len(listed.json()) == 2
+
+    task_id = task_body["id"]
+    toggled = client.patch(
+        f"/api/tasks/{task_id}", json={"done": True}, headers=auth_headers
+    )
+    assert toggled.status_code == 200
+    assert toggled.json()["done"] is True
+    # unchanged fields stay intact after partial update
+    assert toggled.json()["title"] == "לשלוח טיוטת הסכם ללקוח לאישור"
+
+    # completed tasks sort after pending ones
+    listed_after_toggle = client.get(f"/api/cases/{case_id}/tasks", headers=auth_headers)
+    titles_in_order = [t["title"] for t in listed_after_toggle.json()]
+    assert titles_in_order[-1] == "לשלוח טיוטת הסכם ללקוח לאישור"
+
+    deleted = client.delete(f"/api/tasks/{task_id}", headers=auth_headers)
+    assert deleted.status_code == 204
+
+    listed_final = client.get(f"/api/cases/{case_id}/tasks", headers=auth_headers)
+    assert len(listed_final.json()) == 1
+
+
+def test_task_missing_case_and_task_404s(client, auth_headers):
+    resp = client.get("/api/cases/999999/tasks", headers=auth_headers)
+    assert resp.status_code == 404
+    resp = client.post(
+        "/api/cases/999999/tasks", json={"title": "x"}, headers=auth_headers
+    )
+    assert resp.status_code == 404
+
+    patched = client.patch(
+        "/api/tasks/999999", json={"done": True}, headers=auth_headers
+    )
+    assert patched.status_code == 404
+
+    deleted = client.delete("/api/tasks/999999", headers=auth_headers)
+    assert deleted.status_code == 404

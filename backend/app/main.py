@@ -15,7 +15,12 @@ from .routers import (
     documents,
     drafting,
     invoices,
+    knowledge,
+    meetings,
     notes,
+    research,
+    risk,
+    tasks,
     templates,
 )
 
@@ -44,6 +49,7 @@ app.include_router(clients.router)
 app.include_router(cases.router)
 app.include_router(templates.router)
 app.include_router(documents.router)
+app.include_router(documents.upload_router)
 app.include_router(drafting.router)
 app.include_router(authorities.router)
 app.include_router(authorities.audit_router)
@@ -55,6 +61,14 @@ app.include_router(invoices.router)
 app.include_router(invoices.standalone_router)
 app.include_router(notes.router)
 app.include_router(notes.standalone_router)
+app.include_router(knowledge.router)
+app.include_router(research.router)
+app.include_router(risk.router)
+app.include_router(risk.standalone_router)
+app.include_router(tasks.router)
+app.include_router(tasks.standalone_router)
+app.include_router(meetings.router)
+app.include_router(meetings.standalone_router)
 
 
 @app.get("/api/health")

@@ -6,7 +6,51 @@
   --border: #d8d3c8;
   --danger: #a4342a;
   --success: #2f6b3f;
+  /* Secondary text that must still meet WCAG AA on --bg/--surface. */
+  --muted: #6b6459;
+  /* Accent used as *text/icon color* on --bg/--surface. Same as --accent in
+     light mode; dark mode lightens it (see [data-theme="dark"]) because the
+     raw accent hues fall below 4.5:1 on the dark surfaces. */
+  --accent-ink: var(--accent);
+  /* Status-pill palette. Pills used to hardcode light pastel backgrounds,
+     which stayed light in dark mode while their text colors flipped light
+     too (1.7-2.2:1). All pill-ish UI now reads these tokens. Every fg/bg
+     pair here and in the dark block passes WCAG AA (>= 4.5:1). */
+  --pill-green-bg: #e2f0e5;
+  --pill-green-fg: #2f6b3f;
+  --pill-amber-bg: #fdf2e3;
+  --pill-amber-fg: #7a601b;
+  --pill-red-bg: #f0e2e2;
+  --pill-red-fg: #a4342a;
+  --pill-rose-bg: #fbeceb;
+  --pill-orange-bg: #fbe4d0;
+  --pill-orange-fg: #9c470a;
+  --pill-neutral-bg: #eeeeee;
+  --pill-neutral-fg: #555555;
+  --shadow-sm: 0 1px 2px rgba(35, 48, 58, 0.06);
+  --shadow-md: 0 4px 14px rgba(35, 48, 58, 0.08);
+  --heading-font: "Frank Ruhl Libre", "David", serif;
   font-family: "Assistant", "Heebo", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Visible keyboard-focus indicator for buttons/links/tabs (inputs keep their
+   border+ring treatment below). */
+:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 2px;
+}
+
+/* Screen-reader-only text (e.g. names for icon-only/blank table headers). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 * {
@@ -20,6 +64,38 @@ body {
   direction: rtl;
 }
 
+/* Content links (case links in tables/widgets, research sources) previously
+   fell back to the browser-default blue/purple, which is ~1.5:1 against the
+   dark surfaces. --accent-ink passes AA on both themes. */
+a {
+  color: var(--accent-ink);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--heading-font);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+h1 {
+  font-size: 1.6rem;
+  margin: 0;
+}
+
+h2 {
+  font-size: 1.2rem;
+  margin: 0 0 0.75rem;
+}
+
+h2 svg,
+h1 svg {
+  color: var(--accent-ink);
+  flex-shrink: 0;
+}
+
 .app-shell {
   min-height: 100vh;
   display: flex;
@@ -30,31 +106,77 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
   padding: 0.75rem 1.5rem;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 
 .brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--heading-font);
   font-weight: 700;
   font-size: 1.1rem;
+  color: var(--ink);
+}
+
+.brand svg {
+  color: var(--accent-ink);
+}
+
+.topbar nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    padding: 0.6rem 1rem;
+  }
+
+  .topbar nav {
+    gap: 0.15rem 0.25rem;
+  }
+
+  .nav-link {
+    padding: 0.4rem 0.55rem;
+    font-size: 0.88rem;
+  }
+
+  /* Avatar-only user menu button on narrow screens; the popover still shows
+     the full name + email. */
+  .user-menu-info {
+    display: none;
+  }
+
+  .content {
+    padding: 1rem;
+  }
 }
 
 .topbar nav a {
-  margin-inline-end: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
   color: var(--ink);
   text-decoration: none;
   font-weight: 600;
+  transition: color 0.15s ease;
 }
 
 .topbar nav a:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .user-box {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .disclaimer-banner {
@@ -78,21 +200,32 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
   margin-bottom: 1rem;
 }
 
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 1.25rem;
   margin-bottom: 1.25rem;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s ease;
 }
 
 .two-col {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.25rem;
+}
+
+/* Grid items default to min-width: auto, so a wide child (table, long select)
+   silently forces the whole track - and the page - wider than the viewport.
+   Let columns shrink and the children adapt/scroll instead. */
+.two-col > * {
+  min-width: 0;
 }
 
 @media (max-width: 800px) {
@@ -116,32 +249,58 @@ body {
   gap: 0 1rem;
 }
 
+@media (max-width: 640px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
 input,
 select,
 textarea {
   font-family: inherit;
   font-size: 0.95rem;
-  padding: 0.5rem 0.6rem;
+  padding: 0.55rem 0.7rem;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 7px;
   font-weight: 400;
   background: var(--surface);
   color: var(--ink);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 button {
   background: var(--ink);
   color: white;
   border: none;
-  border-radius: 6px;
-  padding: 0.55rem 1rem;
+  border-radius: 7px;
+  padding: 0.55rem 1.1rem;
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s ease, transform 0.05s ease;
 }
 
 button:hover {
   background: var(--accent);
+}
+
+button:active {
+  transform: translateY(1px);
 }
 
 button:disabled {
@@ -151,10 +310,14 @@ button:disabled {
 
 .link-button {
   background: none;
-  color: var(--accent);
-  padding: 0;
+  color: var(--accent-ink);
+  padding: 0.15rem 0;
+  min-height: 24px;
   font-weight: 600;
   text-decoration: underline;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .link-button:hover {
@@ -162,20 +325,42 @@ button:disabled {
   color: var(--ink);
 }
 
+/* Wide tables (billing, invoices, meetings, cases) scroll inside this
+   container on narrow viewports instead of stretching the whole page.
+   contain: content is load-bearing: in RTL, Chromium still propagates the
+   table's leftward scrollable overflow to the document even through an
+   overflow-x: auto ancestor (verified empirically - even overflow-x: clip
+   doesn't stop it), which reintroduces page-level horizontal scroll.
+   Layout+paint containment does stop it, and inner scrolling keeps working. */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  contain: content;
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .data-table th,
 .data-table td {
   padding: 0.65rem 0.9rem;
-  text-align: right;
+  text-align: start;
   border-bottom: 1px solid var(--border);
+}
+
+.data-table tbody tr {
+  transition: background 0.1s ease;
+}
+
+.data-table tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
 .data-table th {
@@ -188,52 +373,82 @@ button:disabled {
   border-radius: 999px;
   font-size: 0.8rem;
   font-weight: 700;
-  background: #eee;
+  background: var(--pill-neutral-bg);
+  color: var(--pill-neutral-fg);
 }
 
 .status-open {
-  background: #e2f0e5;
-  color: var(--success);
+  background: var(--pill-green-bg);
+  color: var(--pill-green-fg);
 }
 
 .status-pending {
-  background: #fdf2e3;
-  color: #8a6d1f;
+  background: var(--pill-amber-bg);
+  color: var(--pill-amber-fg);
 }
 
 .status-closed {
-  background: #f0e2e2;
-  color: var(--danger);
+  background: var(--pill-red-bg);
+  color: var(--pill-red-fg);
 }
 
 .deadline-pending {
-  background: #fdf2e3;
-  color: #8a6d1f;
+  background: var(--pill-amber-bg);
+  color: var(--pill-amber-fg);
 }
 
 .deadline-completed {
-  background: #e2f0e5;
-  color: var(--success);
+  background: var(--pill-green-bg);
+  color: var(--pill-green-fg);
 }
 
 .deadline-missed {
-  background: #f0e2e2;
-  color: var(--danger);
+  background: var(--pill-red-bg);
+  color: var(--pill-red-fg);
+}
+
+.risk-green {
+  background: var(--pill-green-bg);
+  color: var(--pill-green-fg);
+}
+
+.risk-yellow {
+  background: var(--pill-amber-bg);
+  color: var(--pill-amber-fg);
+}
+
+.risk-orange {
+  background: var(--pill-orange-bg);
+  color: var(--pill-orange-fg);
+}
+
+.risk-red {
+  background: var(--pill-red-bg);
+  color: var(--pill-red-fg);
+  font-weight: 800;
+}
+
+.risk-matrix-cell {
+  padding: 0.4rem 0.6rem;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 4px;
 }
 
 .invoice-draft {
-  background: #eee;
-  color: #555;
+  background: var(--pill-neutral-bg);
+  color: var(--pill-neutral-fg);
 }
 
 .invoice-sent {
-  background: #fdf2e3;
-  color: #8a6d1f;
+  background: var(--pill-amber-bg);
+  color: var(--pill-amber-fg);
 }
 
 .invoice-paid {
-  background: #e2f0e5;
-  color: var(--success);
+  background: var(--pill-green-bg);
+  color: var(--pill-green-fg);
 }
 
 .error-text {
@@ -247,7 +462,7 @@ button:disabled {
 }
 
 .muted {
-  color: #6b6459;
+  color: var(--muted);
 }
 
 .small {
@@ -265,6 +480,33 @@ button:disabled {
 .authority-list li {
   padding: 0.4rem 0;
   border-bottom: 1px solid var(--border);
+}
+
+.task-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+}
+
+.task-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.task-list input[type="checkbox"] {
+  flex-shrink: 0;
+}
+
+.task-title {
+  flex: 1;
+}
+
+.task-done .task-title {
+  text-decoration: line-through;
+  color: var(--muted);
 }
 
 .doc-editor {
@@ -292,13 +534,13 @@ button:disabled {
 }
 
 .audit-result li.verified {
-  background: #e2f0e5;
-  color: var(--success);
+  background: var(--pill-green-bg);
+  color: var(--pill-green-fg);
 }
 
 .audit-result li.unverified {
-  background: #fbeceb;
-  color: var(--danger);
+  background: var(--pill-rose-bg);
+  color: var(--pill-red-fg);
 }
 
 .auth-page {
@@ -306,18 +548,36 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: center;
+  background: radial-gradient(
+    circle at 50% 0%,
+    color-mix(in srgb, var(--accent) 10%, var(--bg)) 0%,
+    var(--bg) 60%
+  );
 }
 
 .auth-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 2rem;
   width: 100%;
   max-width: 380px;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  box-shadow: var(--shadow-md);
+}
+
+.auth-logo {
+  display: flex;
+  justify-content: center;
+  color: var(--accent-ink);
+  margin-bottom: 0.25rem;
+}
+
+.auth-card h1 {
+  justify-content: center;
+  text-align: center;
 }
 
 .auth-card label {
@@ -330,4 +590,838 @@ button:disabled {
 .center-loading {
   text-align: center;
   margin-top: 3rem;
+}
+
+/* Accent color picker */
+.accent-picker {
+  position: relative;
+}
+
+.accent-picker-toggle {
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+  min-width: 24px;
+  min-height: 24px;
+  border-radius: 7px;
+}
+
+.accent-picker-toggle:hover {
+  color: var(--accent-ink);
+}
+
+.accent-picker-popover {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  inset-inline-end: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem;
+  display: flex;
+  gap: 0.4rem;
+  box-shadow: var(--shadow-md);
+  z-index: 20;
+}
+
+.accent-swatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.accent-swatch-check {
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* Stat cards */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-icon.tone-indigo {
+  background: #e8eaf9;
+  color: #4c4fc7;
+}
+
+.stat-icon.tone-emerald {
+  background: var(--pill-green-bg);
+  color: var(--pill-green-fg);
+}
+
+.stat-icon.tone-amber {
+  background: var(--pill-amber-bg);
+  color: var(--pill-amber-fg);
+}
+
+.stat-icon.tone-rose {
+  background: var(--pill-rose-bg);
+  color: var(--pill-red-fg);
+}
+
+.stat-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1;
+  font-family: var(--heading-font);
+}
+
+.stat-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--muted);
+}
+
+.empty-state svg {
+  margin: 0 auto 0.75rem;
+  opacity: 0.6;
+}
+
+.empty-state-title {
+  font-weight: 600;
+  color: var(--muted);
+  margin: 0;
+}
+
+.empty-state-subtitle {
+  font-size: 0.85rem;
+  margin: 0.35rem 0 0;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.25rem;
+  overflow-x: auto;
+}
+
+.tab-button {
+  background: none;
+  color: var(--ink);
+  border: none;
+  border-radius: 8px 8px 0 0;
+  padding: 0.65rem 1rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.tab-button svg {
+  color: inherit;
+  opacity: 0.65;
+}
+
+.tab-button:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--ink);
+}
+
+.tab-button.active {
+  color: var(--accent-ink);
+  border-bottom-color: var(--accent-ink);
+  background: none;
+}
+
+.tab-button.active svg {
+  opacity: 1;
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+/* Nav links (topbar) */
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 600;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.nav-link:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.nav-link.active {
+  color: var(--accent-ink);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+/* User menu */
+.user-menu {
+  position: relative;
+}
+
+.user-menu-toggle {
+  background: none;
+  color: var(--ink);
+  padding: 0.25rem 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.user-menu-toggle:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.user-menu-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.25;
+}
+
+.user-menu-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.user-menu-role {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.user-menu-chevron {
+  color: var(--muted);
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.user-menu-chevron.open {
+  transform: rotate(180deg);
+}
+
+.user-menu-popover {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  inset-inline-end: 0;
+  min-width: 200px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem;
+  box-shadow: var(--shadow-md);
+  z-index: 20;
+}
+
+.user-menu-popover-header {
+  padding: 0.35rem 0.5rem 0.6rem;
+  margin-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.user-menu-item {
+  width: 100%;
+  background: none;
+  color: var(--danger);
+  font-weight: 600;
+  padding: 0.5rem;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  justify-content: flex-start;
+}
+
+.user-menu-item:hover {
+  background: var(--pill-rose-bg);
+}
+
+/* Dashboard page header + layout */
+.page-header h1 {
+  margin-bottom: 0.2rem;
+}
+
+.page-subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.stat-icon.tone-slate {
+  background: #e7e9ec;
+  color: #4a5568;
+}
+
+.dashboard-layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+/* Same min-width: auto escape hatch as .two-col - without this the case
+   table's intrinsic width blows the single-column mobile layout past the
+   viewport. */
+.dashboard-layout > * {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Case table toolbar */
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.4rem 0.7rem;
+  flex: 1;
+  min-width: 220px;
+  color: var(--muted);
+}
+
+.search-box input {
+  border: none;
+  padding: 0;
+  flex: 1;
+  background: transparent;
+}
+
+/* The inner input suppresses its own ring, so the wrapper must show focus
+   instead - otherwise keyboard users get no indicator at all here. */
+.search-box input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.search-box:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.status-filter-group {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.status-filter-chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+}
+
+.status-filter-chip:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.status-filter-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.sort-header {
+  background: none;
+  color: inherit;
+  font-weight: inherit;
+  font-size: inherit;
+  padding: 0.25rem 0;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.sort-header:hover {
+  background: none;
+  color: var(--accent-ink);
+}
+
+/* Deadlines widget */
+.deadlines-widget {
+  position: sticky;
+  top: 1.5rem;
+}
+
+/* Upcoming-meetings widget: sits below the (sticky) deadlines widget, reusing
+   the same urgency-grouped list styling (.deadline-groups / .deadline-group)
+   since the visual language is identical - just a different date field. */
+.meetings-widget {
+  margin-top: 1.25rem;
+}
+
+.deadline-groups {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.deadline-group {
+  margin-bottom: 0.85rem;
+}
+
+.deadline-group:last-child {
+  margin-bottom: 0;
+}
+
+.deadline-group-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  width: fit-content;
+}
+
+.deadline-group-overdue .deadline-group-label,
+.deadline-group-urgent .deadline-group-label {
+  background: var(--pill-rose-bg);
+  color: var(--pill-red-fg);
+}
+
+.deadline-group-soon .deadline-group-label {
+  background: var(--pill-amber-bg);
+  color: var(--pill-amber-fg);
+}
+
+.deadline-group-later .deadline-group-label {
+  background: var(--pill-green-bg);
+  color: var(--pill-green-fg);
+}
+
+.deadline-group .doc-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.deadline-date {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Dark mode                                                              */
+/* ---------------------------------------------------------------------- */
+/* Toggled via a `data-theme="dark"` attribute on <html> (see useTheme in
+   theme.ts / ThemeToggle.tsx). Most of the app already themes exclusively
+   through the CSS custom properties below, so redefining them here is
+   enough to flip the whole app to dark without touching individual rules.
+   A handful of components use hardcoded colors instead of the shared
+   tokens (e.g. table header background, the disclaimer banner) - those get
+   explicit dark overrides too. */
+[data-theme="dark"] {
+  --bg: #1a1e24;
+  --surface: #242a32;
+  --ink: #e8e4da;
+  --border: #3a4149;
+  --danger: #e08578;
+  --success: #7fc492;
+  /* #6b6459 (light-mode muted) is only ~2.5:1 on the dark surface. */
+  --muted: #a39b8e;
+  /* Raw accent presets are 2.5-3:1 as text on the dark surfaces; blending
+     55% accent with white keeps the hue and clears 4.5:1 for all presets. */
+  --accent-ink: color-mix(in srgb, var(--accent) 55%, white);
+  /* Dark pill palette - same hues, inverted luminance, all pairs >= 4.5:1. */
+  --pill-green-bg: #243b2c;
+  --pill-green-fg: #8fd0a2;
+  --pill-amber-bg: #3d331a;
+  --pill-amber-fg: #e3c27c;
+  --pill-red-bg: #452522;
+  --pill-red-fg: #eb9a8e;
+  --pill-rose-bg: #3a2320;
+  --pill-orange-bg: #40281a;
+  --pill-orange-fg: #f0a878;
+  --pill-neutral-bg: #33393f;
+  --pill-neutral-fg: #c9c4bb;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] .stat-icon.tone-slate {
+  background: #333a44;
+  color: #b8c2d0;
+}
+
+[data-theme="dark"] .data-table th {
+  background: #2a313a;
+}
+
+[data-theme="dark"] .disclaimer-banner {
+  background: #3a2e1a;
+  border-bottom-color: #6b4c1f;
+  color: #f0d9a8;
+}
+
+[data-theme="dark"] .error-text {
+  background: #3a2320;
+  border-color: #5c342e;
+}
+
+[data-theme="dark"] .stat-icon.tone-indigo {
+  background: #2a2d4a;
+  color: #a4a8f2;
+}
+
+/* Primary buttons use var(--ink) as their background, which is correct in
+   light mode (dark ink on a white surface) but inverts to a near-white,
+   illegible button once --ink becomes a light color in dark mode. Give
+   dark mode its own button treatment based on --accent instead. White text
+   clears 4.5:1 on every accent preset; the old near-black text was 3.45:1
+   on the default gold, so hover darkens rather than lightens. */
+[data-theme="dark"] button {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+[data-theme="dark"] button:hover {
+  background: color-mix(in srgb, var(--accent) 85%, black);
+}
+
+[data-theme="dark"] .link-button {
+  background: none;
+  color: var(--accent-ink);
+}
+
+[data-theme="dark"] .link-button:hover {
+  background: none;
+  color: var(--ink);
+}
+
+/* The dark `button` rule above outweighs class-only selectors (attribute +
+   element beats a lone class), so every "transparent" button variant would
+   otherwise get an accent-colored slab background in dark mode (tabs, sort
+   headers, filter chips, the user-menu toggle...). Re-assert their intended
+   transparent/neutral treatments here. */
+[data-theme="dark"] .tab-button {
+  background: none;
+  color: var(--ink);
+}
+
+[data-theme="dark"] .tab-button:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--ink);
+}
+
+[data-theme="dark"] .tab-button.active {
+  background: none;
+  color: var(--accent-ink);
+}
+
+[data-theme="dark"] .sort-header {
+  background: none;
+  color: inherit;
+}
+
+[data-theme="dark"] .sort-header:hover {
+  background: none;
+  color: var(--accent-ink);
+}
+
+[data-theme="dark"] .status-filter-chip {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+[data-theme="dark"] .status-filter-chip:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+[data-theme="dark"] .status-filter-chip.active {
+  background: var(--accent);
+  color: white;
+}
+
+[data-theme="dark"] .user-menu-toggle {
+  background: none;
+  color: var(--ink);
+}
+
+[data-theme="dark"] .user-menu-toggle:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+[data-theme="dark"] .user-menu-item {
+  background: none;
+  color: var(--danger);
+}
+
+[data-theme="dark"] .user-menu-item:hover {
+  background: var(--pill-rose-bg);
+}
+
+[data-theme="dark"] .toast-close {
+  background: none;
+  color: inherit;
+}
+
+[data-theme="dark"] .toast-close:hover {
+  background: none;
+  color: var(--ink);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Theme toggle                                                           */
+/* ---------------------------------------------------------------------- */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+  min-width: 24px;
+  min-height: 24px;
+  border-radius: 7px;
+}
+
+.auth-topbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: -0.5rem;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Toast notifications                                                    */
+/* ---------------------------------------------------------------------- */
+/* Positioned with logical (inline-end) properties rather than left/right
+   so it lands on the correct side for the app's RTL direction - in RTL,
+   inset-inline-end resolves to the left edge. */
+.toast-container {
+  position: fixed;
+  top: 1rem;
+  inset-inline-end: 1rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: min(340px, calc(100vw - 2rem));
+  /* The container is now always mounted (so the live region exists before
+     the first toast); don't let the empty box intercept taps. */
+  pointer-events: none;
+}
+
+.toast-container > * {
+  pointer-events: auto;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-inline-start: 4px solid var(--ink);
+  border-radius: 8px;
+  padding: 0.65rem 0.9rem;
+  box-shadow: var(--shadow-md);
+  font-size: 0.9rem;
+  color: var(--ink);
+  animation: toast-in 0.2s ease-out;
+}
+
+.toast svg {
+  flex-shrink: 0;
+}
+
+.toast-success {
+  border-inline-start-color: var(--success);
+}
+
+.toast-success svg {
+  color: var(--success);
+}
+
+.toast-error {
+  border-inline-start-color: var(--danger);
+}
+
+.toast-error svg {
+  color: var(--danger);
+}
+
+.toast-info {
+  border-inline-start-color: var(--accent);
+}
+
+.toast-info svg {
+  color: var(--accent-ink);
+}
+
+.toast-message {
+  flex: 1;
+}
+
+.toast-close {
+  background: none;
+  padding: 0.35rem;
+  min-width: 24px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.toast-close:hover {
+  background: none;
+  opacity: 1;
+  color: var(--ink);
+}
+
+/* Slide down instead of a physical translateX so the motion reads the same
+   in RTL and LTR. */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Loading skeletons                                                      */
+/* ---------------------------------------------------------------------- */
+.skeleton {
+  display: inline-block;
+  background: linear-gradient(
+    90deg,
+    var(--border) 25%,
+    color-mix(in srgb, var(--border) 40%, var(--surface)) 50%,
+    var(--border) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.skeleton-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.9rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.skeleton-table-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 0.75rem;
+}
+
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
 }

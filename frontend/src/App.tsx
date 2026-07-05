@@ -5,6 +5,7 @@ import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import ClientsPage from "./pages/ClientsPage";
 import CaseDetailPage from "./pages/CaseDetailPage";
+import ResearchPage from "./pages/ResearchPage";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -27,6 +28,7 @@ function AppRoutes() {
       >
         <Route index element={<DashboardPage />} />
         <Route path="clients" element={<ClientsPage />} />
+        <Route path="research" element={<ResearchPage />} />
         <Route path="cases/:caseId" element={<CaseDetailPage />} />
       </Route>
     </Routes>
