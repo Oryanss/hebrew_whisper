@@ -31,12 +31,12 @@ Success Criteria.
 | ד' | Enterprise Architecture | שכבות, שירותים, רכיבים, תקשורת, אבטחה, תשתית | טיוטה ראשונה |
 | ה' | Enterprise Module Constitution | חוקת כל מודול, אחד-אחד, באותו פורמט | טיוטה ראשונה — 13 מודולים קיימים מתועדים |
 | ו' | AI Agent Constitution | הגדרת כל Agent — רק לאחר שהוגדרו חשיבה, עבודה ומבנה | טיוטה ראשונה — 3 סוכנים פעילים + תבנית כתב-סמכות |
-| ז' | Logical Model Constitution | המפה הלוגית של הידע | מתוכנן |
-| ח' | Data Constitution | כללי המידע (לא בסיס הנתונים) | מתוכנן |
-| ט' | Decision Constitution | מנוע קבלת ההחלטות | מתוכנן |
-| י' | Workflow Constitution | כל תהליכי העבודה | מתוכנן |
-| י"א | Quality Constitution | QA, Red Team, Audit, Peer Review, Regression | מתוכנן |
-| י"ב | Governance Constitution | החוקה הארגונית | מתוכנן |
+| ז' | Logical Model Constitution | המפה הלוגית של הידע | טיוטה ראשונה |
+| ח' | Data Constitution | כללי המידע (לא בסיס הנתונים) | טיוטה ראשונה |
+| ט' | Decision Constitution | מנוע קבלת ההחלטות | טיוטה ראשונה |
+| י' | Workflow Constitution | כל תהליכי העבודה | טיוטה ראשונה |
+| י"א | Quality Constitution | QA, Red Team, Audit, Peer Review, Regression | טיוטה ראשונה |
+| י"ב | Governance Constitution | החוקה הארגונית | טיוטה ראשונה |
 
 ## קבצים
 
@@ -46,6 +46,12 @@ Success Criteria.
 - [כרך ד' — Enterprise Architecture](volume-04-architecture.md)
 - [כרך ה' — Enterprise Module Constitution](volume-05-modules.md)
 - [כרך ו' — AI Agent Constitution](volume-06-agents.md)
+- [כרך ז' — Logical Model Constitution](volume-07-logical-model.md)
+- [כרך ח' — Data Constitution](volume-08-data.md)
+- [כרך ט' — Decision Constitution](volume-09-decision.md)
+- [כרך י' — Workflow Constitution](volume-10-workflows.md)
+- [כרך י"א — Quality Constitution](volume-11-quality.md)
+- [כרך י"ב — Governance Constitution](volume-12-governance.md)
 
 ## הערת מספור
 
