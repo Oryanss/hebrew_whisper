@@ -29,7 +29,7 @@ Success Criteria.
 | ב' | Enterprise Reasoning Framework | כיצד המערכת חושבת: אמת, ראיות, אי-ודאות, פרשנות, טיעון, החלטה, סיכון, אתיקה, הסבריות | טיוטה ראשונה |
 | ג' | Enterprise Methodology | מחזור החיים המחייב של כל משימה, מתודולוגיות עבודה, שיפור מתמיד | מלא |
 | ד' | Enterprise Architecture | שכבות, שירותים, רכיבים, תקשורת, אבטחה, תשתית | טיוטה ראשונה |
-| ה' | Enterprise Module Constitution | חוקת כל מודול, אחד-אחד, באותו פורמט | מתוכנן |
+| ה' | Enterprise Module Constitution | חוקת כל מודול, אחד-אחד, באותו פורמט | טיוטה ראשונה — 13 מודולים קיימים מתועדים |
 | ו' | AI Agent Constitution | הגדרת כל Agent — רק לאחר שהוגדרו חשיבה, עבודה ומבנה | מתוכנן |
 | ז' | Logical Model Constitution | המפה הלוגית של הידע | מתוכנן |
 | ח' | Data Constitution | כללי המידע (לא בסיס הנתונים) | מתוכנן |
@@ -43,6 +43,8 @@ Success Criteria.
 - [כרך א' — Constitutional Foundation](volume-01-foundation.md)
 - [כרך ב' — Enterprise Reasoning Framework](volume-02-reasoning-framework.md)
 - [כרך ג' — Enterprise Methodology](volume-03-methodology.md)
+- [כרך ד' — Enterprise Architecture](volume-04-architecture.md)
+- [כרך ה' — Enterprise Module Constitution](volume-05-modules.md)
 
 ## הערת מספור
 
