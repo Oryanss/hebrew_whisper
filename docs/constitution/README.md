@@ -30,7 +30,7 @@ Success Criteria.
 | ג' | Enterprise Methodology | מחזור החיים המחייב של כל משימה, מתודולוגיות עבודה, שיפור מתמיד | מלא |
 | ד' | Enterprise Architecture | שכבות, שירותים, רכיבים, תקשורת, אבטחה, תשתית | טיוטה ראשונה |
 | ה' | Enterprise Module Constitution | חוקת כל מודול, אחד-אחד, באותו פורמט | טיוטה ראשונה — 13 מודולים קיימים מתועדים |
-| ו' | AI Agent Constitution | הגדרת כל Agent — רק לאחר שהוגדרו חשיבה, עבודה ומבנה | מתוכנן |
+| ו' | AI Agent Constitution | הגדרת כל Agent — רק לאחר שהוגדרו חשיבה, עבודה ומבנה | טיוטה ראשונה — 3 סוכנים פעילים + תבנית כתב-סמכות |
 | ז' | Logical Model Constitution | המפה הלוגית של הידע | מתוכנן |
 | ח' | Data Constitution | כללי המידע (לא בסיס הנתונים) | מתוכנן |
 | ט' | Decision Constitution | מנוע קבלת ההחלטות | מתוכנן |
@@ -45,6 +45,7 @@ Success Criteria.
 - [כרך ג' — Enterprise Methodology](volume-03-methodology.md)
 - [כרך ד' — Enterprise Architecture](volume-04-architecture.md)
 - [כרך ה' — Enterprise Module Constitution](volume-05-modules.md)
+- [כרך ו' — AI Agent Constitution](volume-06-agents.md)
 
 ## הערת מספור
 
